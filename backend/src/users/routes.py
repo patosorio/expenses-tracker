@@ -9,7 +9,13 @@ from src.users.schemas import (
     UserUpdate,
     UserListResponse,
     UserStatsResponse,
-    UserCreate
+    UserCreate,
+    UserSettingsResponse,
+    UserSettingsUpdate,
+    NotificationSettingsUpdate,
+    UserPreferencesUpdate,
+    NotificationSettings,
+    UserPreferences
 )
 from src.users.service import UserService
 from src.auth.dependencies import get_current_user
@@ -182,3 +188,142 @@ async def get_user_stats(
     
     user_service = UserService(db)
     return await user_service.get_user_stats()
+
+
+# User Settings Routes
+
+@router.get("/me/settings", response_model=UserSettingsResponse)
+async def get_user_settings(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get current user's settings and preferences"""
+    try:
+        user_service = UserService(db)
+        settings = await user_service.get_user_settings(current_user.id)
+        return settings
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get user settings: {str(e)}"
+        )
+
+@router.put("/me/settings", response_model=UserSettingsResponse)
+async def update_user_settings(
+    settings_data: UserSettingsUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Update user settings and preferences"""
+    try:
+        user_service = UserService(db)
+        updated_settings = await user_service.update_user_settings(current_user.id, settings_data)
+        return updated_settings
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to update user settings: {str(e)}"
+        )
+
+@router.put("/me/notifications", response_model=UserSettingsResponse)
+async def update_notification_settings(
+    notification_data: NotificationSettingsUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Update notification preferences only"""
+    try:
+        user_service = UserService(db)
+        updated_settings = await user_service.update_notification_settings(current_user.id, notification_data)
+        return updated_settings
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to update notification settings: {str(e)}"
+        )
+
+@router.put("/me/preferences", response_model=UserSettingsResponse)
+async def update_user_preferences(
+    preferences_data: UserPreferencesUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Update user preferences only (non-notification settings)"""
+    try:
+        user_service = UserService(db)
+        updated_settings = await user_service.update_user_preferences(current_user.id, preferences_data)
+        return updated_settings
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to update user preferences: {str(e)}"
+        )
+
+@router.post("/me/settings/reset", response_model=UserSettingsResponse)
+async def reset_user_settings(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Reset user settings to default values"""
+    try:
+        user_service = UserService(db)
+        reset_settings = await user_service.reset_settings_to_default(current_user.id)
+        return reset_settings
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to reset user settings: {str(e)}"
+        )
+
+@router.get("/me/preferences", response_model=UserPreferences)
+async def get_user_preferences(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get only user preferences (for quick access)"""
+    try:
+        user_service = UserService(db)
+        settings = await user_service.get_user_settings(current_user.id)
+        
+        return UserPreferences(
+            currency=settings.currency,
+            date_format=settings.date_format,
+            time_format=settings.time_format,
+            week_start=settings.week_start,
+            theme=settings.theme,
+            fiscal_year_start=settings.fiscal_year_start,
+            default_export_format=settings.default_export_format,
+            include_attachments=settings.include_attachments
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get user preferences: {str(e)}"
+        )
+
+@router.get("/me/notifications", response_model=NotificationSettings)
+async def get_notification_settings(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get only notification settings (for quick access)"""
+    try:
+        user_service = UserService(db)
+        settings = await user_service.get_user_settings(current_user.id)
+        
+        return NotificationSettings(
+            email_notifications=settings.email_notifications,
+            push_notifications=settings.push_notifications,
+            bill_reminders=settings.bill_reminders,
+            weekly_reports=settings.weekly_reports,
+            overdue_invoices=settings.overdue_invoices,
+            team_updates=settings.team_updates,
+            marketing_emails=settings.marketing_emails,
+            expense_summaries=settings.expense_summaries,
+            budget_alerts=settings.budget_alerts
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get notification settings: {str(e)}"
+        )

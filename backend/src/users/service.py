@@ -4,8 +4,11 @@ from typing import Optional, List
 from datetime import datetime, timedelta
 import uuid
 
-from src.users.models import User, UserRole, UserStatus
-from src.users.schemas import UserCreate, UserUpdate, UserStatsResponse
+from src.users.models import User, UserRole, UserStatus, UserSettings
+from src.users.schemas import (
+    UserCreate, UserUpdate, UserStatsResponse, UserSettingsUpdate,
+    NotificationSettingsUpdate, UserPreferencesUpdate
+)
 from src.database import get_db
 from src.exceptions import UserNotFoundError, DuplicateEmailError
 
@@ -151,3 +154,88 @@ class UserService:
             users_by_role=users_by_role,
             users_by_status=users_by_status
         )
+
+    # User Settings Methods
+
+    async def get_user_settings(self, user_id: str) -> UserSettings:
+        """Get user settings, create default if doesn't exist"""
+        settings = self.db.query(UserSettings).filter(UserSettings.user_id == user_id).first()
+        
+        if not settings:
+            # Create default settings
+            settings = await self.create_default_settings(user_id)
+        
+        return settings
+
+    async def create_default_settings(self, user_id: str) -> UserSettings:
+        """Create default settings for a user"""
+        settings = UserSettings(
+            id=str(uuid.uuid4()),
+            user_id=user_id
+            # All other fields will use their default values
+        )
+        
+        self.db.add(settings)
+        self.db.commit()
+        self.db.refresh(settings)
+        
+        return settings
+
+    async def update_user_settings(self, user_id: str, settings_data: UserSettingsUpdate) -> UserSettings:
+        """Update user settings"""
+        settings = await self.get_user_settings(user_id)
+        
+        # Update only provided fields
+        for field, value in settings_data.model_dump(exclude_unset=True).items():
+            setattr(settings, field, value)
+        
+        settings.updated_at = datetime.utcnow()
+        self.db.commit()
+        self.db.refresh(settings)
+        
+        return settings
+
+    async def update_notification_settings(self, user_id: str, notification_data: NotificationSettingsUpdate) -> UserSettings:
+        """Update only notification settings"""
+        settings = await self.get_user_settings(user_id)
+        
+        # Update only notification fields
+        for field, value in notification_data.model_dump(exclude_unset=True).items():
+            setattr(settings, field, value)
+        
+        settings.updated_at = datetime.utcnow()
+        self.db.commit()
+        self.db.refresh(settings)
+        
+        return settings
+
+    async def update_user_preferences(self, user_id: str, preferences_data: UserPreferencesUpdate) -> UserSettings:
+        """Update only user preferences (non-notification settings)"""
+        settings = await self.get_user_settings(user_id)
+        
+        # Update only preference fields
+        for field, value in preferences_data.model_dump(exclude_unset=True).items():
+            setattr(settings, field, value)
+        
+        settings.updated_at = datetime.utcnow()
+        self.db.commit()
+        self.db.refresh(settings)
+        
+        return settings
+
+    async def reset_settings_to_default(self, user_id: str) -> UserSettings:
+        """Reset user settings to default values"""
+        settings = await self.get_user_settings(user_id)
+        
+        # Reset to default values
+        default_settings = UserSettings(id="", user_id="")  # Just to get defaults
+        for column in UserSettings.__table__.columns:
+            if column.name not in ['id', 'user_id', 'created_at', 'updated_at']:
+                default_value = column.default.arg if column.default else None
+                setattr(settings, column.name, default_value)
+        
+        settings.updated_at = datetime.utcnow()
+        self.db.commit()
+        self.db.refresh(settings)
+        
+        return settings

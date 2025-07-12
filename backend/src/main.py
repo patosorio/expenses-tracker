@@ -6,6 +6,13 @@ from src.config import settings
 from src.database import Base, engine
 from src.firebase.auth import initialize_firebase
 
+# Import models to register them with SQLAlchemy
+from src.users.models import User, UserSettings
+from src.categories.models import Category
+from src.expenses.models import Expense
+from src.business.models import BusinessSettings, TaxConfiguration
+from src.team.models import TeamMember, TeamInvitation
+
 # Initialize Firebase Admin SDK
 initialize_firebase()
 

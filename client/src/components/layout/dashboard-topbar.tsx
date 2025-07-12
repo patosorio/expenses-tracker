@@ -76,16 +76,8 @@ export function DashboardTopbar() {
                   <span>Profile</span>
                 </Link>
               </DropdownMenuItem>
-              {profile?.role === "owner" && (
-                <DropdownMenuItem asChild>
-                  <Link href="/dashboard/admin">
-                    <Users className="mr-2 h-4 w-4" />
-                    <span>Admin</span>
-                  </Link>
-                </DropdownMenuItem>
-              )}
               <DropdownMenuItem asChild>
-                <Link href="/dashboard/settings">
+                <Link href="/settings">
                   <Settings className="mr-2 h-4 w-4" />
                   <span>Settings</span>
                 </Link>

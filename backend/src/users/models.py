@@ -1,10 +1,9 @@
-from sqlalchemy import Column, String, Boolean, DateTime, Text, Integer, Enum
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy import Column, String, Boolean, DateTime, Text, Integer, Enum, ForeignKey
+from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from datetime import datetime
 from enum import Enum as PyEnum
 
-Base = declarative_base()
 from src.database import Base
 
 class UserRole(str, PyEnum):
@@ -48,5 +47,51 @@ class User(Base):
     user_type = Column(String(20), nullable=False, default="personal")
     company = Column(String(255))
     
+    # Relationships
+    categories = relationship("Category", back_populates="user", cascade="all, delete-orphan")
+    settings = relationship("UserSettings", back_populates="user", uselist=False, cascade="all, delete-orphan")
+    business_settings = relationship("BusinessSettings", back_populates="user", uselist=False, cascade="all, delete-orphan")
+    tax_configurations = relationship("TaxConfiguration", back_populates="user", cascade="all, delete-orphan")
+    
     def __repr__(self):
         return f"<User(id={self.id}, email={self.email})>"
+
+
+class UserSettings(Base):
+    __tablename__ = "user_settings"
+    
+    id = Column(String, primary_key=True, index=True)
+    user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), unique=True, nullable=False)
+    
+    # Enhanced Preferences (expand beyond basic timezone/language in User model)
+    currency = Column(String(3), default="EUR")
+    date_format = Column(String(20), default="DD/MM/YYYY")
+    time_format = Column(String(10), default="24h")  # 12h or 24h
+    week_start = Column(String(10), default="monday")  # monday or sunday
+    theme = Column(String(10), default="system")  # light, dark, system
+    fiscal_year_start = Column(String(10), default="01-01")  # MM-DD format
+    
+    # Notification Preferences
+    email_notifications = Column(Boolean, default=True)
+    push_notifications = Column(Boolean, default=True)
+    bill_reminders = Column(Boolean, default=True)
+    weekly_reports = Column(Boolean, default=False)
+    overdue_invoices = Column(Boolean, default=True)
+    team_updates = Column(Boolean, default=True)
+    marketing_emails = Column(Boolean, default=False)
+    expense_summaries = Column(Boolean, default=True)
+    budget_alerts = Column(Boolean, default=True)
+    
+    # Data Export Preferences
+    default_export_format = Column(String(10), default="csv")  # csv, excel, pdf
+    include_attachments = Column(Boolean, default=True)
+    
+    # Audit fields
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    
+    # Relationship
+    user = relationship("User", back_populates="settings")
+
+    def __repr__(self):
+        return f"<UserSettings(id={self.id}, user_id={self.user_id})>"
