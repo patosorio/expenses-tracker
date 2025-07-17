@@ -27,21 +27,20 @@ app = FastAPI(
 )
 
 # Configure CORS
+print(f"CORS Origins: {settings.CORS_ORIGINS}")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS,
+    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-    allow_headers=[
-        "Content-Type",
-        "Authorization",
-        "Accept",
-        "Origin",
-        "X-Requested-With",
-    ],
+    allow_headers=["*"],
     expose_headers=["Content-Length"],
     max_age=600,  # Cache preflight requests for 10 minutes
 )
 
 # Include API routes
 app.include_router(api_router, prefix="/api/v1")
+
+@app.get("/test-cors")
+async def test_cors():
+    return {"message": "CORS test successful"}

@@ -10,7 +10,7 @@ from src.auth.dependencies import get_current_user
 from src.database import get_db
 
 
-router = APIRouter(prefix="/contacts", tags=["contacts"])
+router = APIRouter(tags=["contacts"])
 
 
 @router.post("/", response_model=ContactResponse)
@@ -25,6 +25,9 @@ async def create_contact(
         return await service.create_contact(contact_data, current_user.id)
     except ContactAlreadyExistsError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        print(f"Error creating contact: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to create contact: {str(e)}")
 
 
 @router.get("/", response_model=ContactListResponse)

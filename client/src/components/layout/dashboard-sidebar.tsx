@@ -14,11 +14,13 @@ import {
   PiggyBank,
   Bot,
   LineChart,
-  FileText
+  FileText,
+  Users
 } from "lucide-react"
 
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { name: "Contacts", href: "/contacts", icon: Users },
   { name: "Projects", href: "/projects", icon: Briefcase },
   { name: "Budgets", href: "/budgets", icon: PiggyBank },
   { name: "Expenses", href: "/expenses", icon: Receipt },

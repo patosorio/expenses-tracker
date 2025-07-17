@@ -1,8 +1,7 @@
 from typing import List, Optional
 from uuid import UUID
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, or_
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import Session
+from sqlalchemy import and_, or_, func
 
 from .models import Contact, ContactType
 from .schemas import ContactCreate, ContactUpdate, ContactResponse
@@ -10,20 +9,21 @@ from src.exceptions import ContactNotFoundError, ContactAlreadyExistsError
 
 
 class ContactService:
-    def __init__(self, db: AsyncSession):
+    def __init__(self, db: Session):
         self.db = db
 
     async def create_contact(self, contact_data: ContactCreate, user_id: str) -> ContactResponse:
         """Create a new contact"""
         # Check for duplicate name within user's contacts
-        existing = await self.db.execute(
-            select(Contact).where(
+        existing = self.db.query(Contact).filter(
+            and_(
                 Contact.user_id == user_id,
                 Contact.name == contact_data.name,
                 Contact.is_active == True
             )
-        )
-        if existing.scalar_one_or_none():
+        ).first()
+        
+        if existing:
             raise ContactAlreadyExistsError(f"Contact '{contact_data.name}' already exists")
 
         contact = Contact(
@@ -31,21 +31,21 @@ class ContactService:
             user_id=user_id
         )
         self.db.add(contact)
-        await self.db.commit()
-        await self.db.refresh(contact)
+        self.db.commit()
+        self.db.refresh(contact)
         
         return ContactResponse.model_validate(contact)
 
     async def get_contact(self, contact_id: UUID, user_id: str) -> ContactResponse:
         """Get a contact by ID"""
-        result = await self.db.execute(
-            select(Contact).where(
+        contact = self.db.query(Contact).filter(
+            and_(
                 Contact.id == contact_id,
                 Contact.user_id == user_id,
                 Contact.is_active == True
             )
-        )
-        contact = result.scalar_one_or_none()
+        ).first()
+        
         if not contact:
             raise ContactNotFoundError("Contact not found")
         
@@ -60,17 +60,19 @@ class ContactService:
         limit: int = 100
     ) -> tuple[List[ContactResponse], int]:
         """List contacts with filtering"""
-        query = select(Contact).where(
-            Contact.user_id == user_id,
-            Contact.is_active == True
+        query = self.db.query(Contact).filter(
+            and_(
+                Contact.user_id == user_id,
+                Contact.is_active == True
+            )
         )
         
         if contact_type:
-            query = query.where(Contact.contact_type == contact_type)
+            query = query.filter(Contact.contact_type == contact_type)
         
         if search:
             search_term = f"%{search}%"
-            query = query.where(
+            query = query.filter(
                 or_(
                     Contact.name.ilike(search_term),
                     Contact.email.ilike(search_term),
@@ -79,15 +81,10 @@ class ContactService:
             )
         
         # Get total count
-        count_query = select(func.count()).select_from(query.subquery())
-        total = await self.db.execute(count_query)
-        total_count = total.scalar()
+        total_count = query.count()
         
         # Get paginated results
-        result = await self.db.execute(
-            query.order_by(Contact.name).offset(skip).limit(limit)
-        )
-        contacts = result.scalars().all()
+        contacts = query.order_by(Contact.name).offset(skip).limit(limit).all()
         
         return [ContactResponse.model_validate(contact) for contact in contacts], total_count
 
@@ -98,54 +95,54 @@ class ContactService:
         user_id: str
     ) -> ContactResponse:
         """Update a contact"""
-        result = await self.db.execute(
-            select(Contact).where(
+        contact = self.db.query(Contact).filter(
+            and_(
                 Contact.id == contact_id,
                 Contact.user_id == user_id,
                 Contact.is_active == True
             )
-        )
-        contact = result.scalar_one_or_none()
+        ).first()
+        
         if not contact:
             raise ContactNotFoundError("Contact not found")
 
         # Check for duplicate name if name is being updated
         update_data = contact_data.model_dump(exclude_unset=True)
         if 'name' in update_data and update_data['name'] != contact.name:
-            existing = await self.db.execute(
-                select(Contact).where(
+            existing = self.db.query(Contact).filter(
+                and_(
                     Contact.user_id == user_id,
                     Contact.name == update_data['name'],
                     Contact.id != contact_id,
                     Contact.is_active == True
                 )
-            )
-            if existing.scalar_one_or_none():
+            ).first()
+            if existing:
                 raise ContactAlreadyExistsError(f"Contact '{update_data['name']}' already exists")
 
         for field, value in update_data.items():
             setattr(contact, field, value)
 
-        await self.db.commit()
-        await self.db.refresh(contact)
+        self.db.commit()
+        self.db.refresh(contact)
         
         return ContactResponse.model_validate(contact)
 
     async def delete_contact(self, contact_id: UUID, user_id: str) -> None:
         """Soft delete a contact"""
-        result = await self.db.execute(
-            select(Contact).where(
+        contact = self.db.query(Contact).filter(
+            and_(
                 Contact.id == contact_id,
                 Contact.user_id == user_id,
                 Contact.is_active == True
             )
-        )
-        contact = result.scalar_one_or_none()
+        ).first()
+        
         if not contact:
             raise ContactNotFoundError("Contact not found")
 
         contact.is_active = False
-        await self.db.commit()
+        self.db.commit()
 
     async def get_contacts_summary(
         self,
@@ -153,23 +150,23 @@ class ContactService:
         contact_type: Optional[ContactType] = None
     ) -> List[dict]:
         """Get lightweight contact summary for dropdowns"""
-        query = select(
+        query = self.db.query(
             Contact.id,
             Contact.name,
             Contact.contact_type,
             Contact.email,
             Contact.phone
-        ).where(
-            Contact.user_id == user_id,
-            Contact.is_active == True
+        ).filter(
+            and_(
+                Contact.user_id == user_id,
+                Contact.is_active == True
+            )
         )
         
         if contact_type:
-            query = query.where(Contact.contact_type == contact_type)
+            query = query.filter(Contact.contact_type == contact_type)
         
-        result = await self.db.execute(
-            query.order_by(Contact.name)
-        )
+        results = query.order_by(Contact.name).all()
         
         return [
             {
@@ -179,5 +176,5 @@ class ContactService:
                 "email": row.email,
                 "phone": row.phone
             }
-            for row in result.all()
+            for row in results
         ]

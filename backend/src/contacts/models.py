@@ -9,9 +9,9 @@ from src.database import Base
 
 
 class ContactType(str, PyEnum):
-    CLIENT = "client"
-    VENDOR = "vendor"
-    SUPPLIER = "supplier"
+    CLIENT = "CLIENT"
+    VENDOR = "VENDOR"
+    SUPPLIER = "SUPPLIER"
 
 
 class Contact(Base):
