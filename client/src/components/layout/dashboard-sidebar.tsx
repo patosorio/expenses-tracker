@@ -1,6 +1,5 @@
 "use client"
 
-import { useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils/utils"
@@ -20,17 +19,21 @@ import {
 
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { name: "Projects", href: "/dashboard/projects", icon: Briefcase },
-  { name: "Budgets", href: "/dashboard/budgets", icon: PiggyBank },
-  { name: "Expenses", href: "/dashboard/expenses", icon: Receipt },
-  { name: "Income", href: "/dashboard/income", icon: TrendingUp },
-  { name: "Forecast", href: "/dashboard/forecast", icon: LineChart },
-  { name: "Reports", href: "/dashboard/reports", icon: FileText },
-  { name: "AI Assistant", href: "/dashboard/ai-assistant", icon: Bot },
+  { name: "Projects", href: "/projects", icon: Briefcase },
+  { name: "Budgets", href: "/budgets", icon: PiggyBank },
+  { name: "Expenses", href: "/expenses", icon: Receipt },
+  { name: "Income", href: "/income", icon: TrendingUp },
+  { name: "Forecast", href: "/forecast", icon: LineChart },
+  { name: "Reports", href: "/reports", icon: FileText },
+  { name: "AI Assistant", href: "/ai-assistant", icon: Bot },
 ]
 
-export function DashboardSidebar() {
-  const [collapsed, setCollapsed] = useState(false)
+interface DashboardSidebarProps {
+  collapsed: boolean
+  onToggleCollapsed: () => void
+}
+
+export function DashboardSidebar({ collapsed, onToggleCollapsed }: DashboardSidebarProps) {
   const pathname = usePathname()
 
   return (
@@ -43,7 +46,7 @@ export function DashboardSidebar() {
       <div className="p-4 border-b border-border">
         <div className="flex items-center justify-between">
           {!collapsed && <h2 className="text-lg font-light">ExpenseTracker</h2>}
-          <Button variant="ghost" size="sm" onClick={() => setCollapsed(!collapsed)} className="h-8 w-8 p-0">
+          <Button variant="ghost" size="sm" onClick={onToggleCollapsed} className="h-8 w-8 p-0">
             {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
           </Button>
         </div>

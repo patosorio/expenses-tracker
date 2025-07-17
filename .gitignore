@@ -25,6 +25,9 @@ backend/.env
 .venv
 venv/
 ENV/
+gcp/*
+backend/src/gcp/*
+**/cloud-vision-service-account.json
 
 # Node.js
 node_modules/

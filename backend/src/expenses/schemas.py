@@ -1,11 +1,14 @@
 from datetime import datetime
-from typing import Optional, List, Dict, Any, Union
+from typing import Optional, List, Dict, Any, Union, TYPE_CHECKING
 from uuid import UUID
 from decimal import Decimal
 
 from pydantic import BaseModel, field_validator, computed_field, ConfigDict
 
 from src.expenses.models import ExpenseType, PaymentMethod, PaymentStatus, AnalysisStatus
+
+if TYPE_CHECKING:
+    from src.contacts.schemas import ContactResponse
 
 
 # Base Schemas
@@ -47,14 +50,13 @@ class ExpenseBase(BaseModel):
     expense_date: datetime
     notes: Optional[str] = None
     receipt_url: Optional[str] = None
-    expense_type: ExpenseType = ExpenseType.SIMPLE
+    expense_type: ExpenseType = ExpenseType.simple
     category_id: UUID
     payment_method: Optional[PaymentMethod] = None
     payment_status: PaymentStatus = PaymentStatus.PENDING
     payment_date: Optional[datetime] = None
     invoice_number: Optional[str] = None
-    supplier_name: Optional[str] = None
-    supplier_tax_id: Optional[str] = None
+    contact_id: Optional[UUID] = None
     payment_due_date: Optional[datetime] = None
     base_amount: Decimal
     tax_amount: Decimal = Decimal('0.00')
@@ -214,8 +216,7 @@ class InvoiceExpenseCreate(BaseModel):
     payment_method: Optional[PaymentMethod] = None
     payment_due_date: Optional[datetime] = None
     invoice_number: Optional[str] = None
-    supplier_name: str
-    supplier_tax_id: Optional[str] = None
+    contact_id: UUID
     base_amount: Decimal
     tax_config_id: Optional[UUID] = None
     currency: str = 'EUR'
@@ -227,13 +228,6 @@ class InvoiceExpenseCreate(BaseModel):
     def validate_description(cls, v: str) -> str:
         if not v or not v.strip():
             raise ValueError('Description cannot be empty')
-        return v.strip()
-
-    @field_validator('supplier_name')
-    @classmethod
-    def validate_supplier_name(cls, v: str) -> str:
-        if not v or not v.strip():
-            raise ValueError('Supplier name is required for invoice expenses')
         return v.strip()
 
     @field_validator('base_amount')
@@ -255,8 +249,7 @@ class ExpenseUpdate(BaseModel):
     payment_status: Optional[PaymentStatus] = None
     payment_date: Optional[datetime] = None
     invoice_number: Optional[str] = None
-    supplier_name: Optional[str] = None
-    supplier_tax_id: Optional[str] = None
+    contact_id: Optional[UUID] = None
     payment_due_date: Optional[datetime] = None
     base_amount: Optional[Decimal] = None
     tax_config_id: Optional[UUID] = None
@@ -339,6 +332,7 @@ class ExpenseResponse(ExpenseBase):
     is_active: bool
     
     # Related objects
+    contact: Optional["ContactResponse"] = None
     attachments: List[AttachmentResponse] = []
     document_analysis: Optional[DocumentAnalysisResponse] = None
 
@@ -351,7 +345,7 @@ class ExpenseListResponse(BaseModel):
     description: str
     expense_date: datetime
     expense_type: ExpenseType
-    supplier_name: Optional[str] = None
+    contact_id: Optional[UUID] = None
     base_amount: Decimal
     tax_amount: Decimal
     total_amount: Decimal
@@ -387,7 +381,7 @@ class ExpenseFilter(BaseModel):
     payment_status: Optional[PaymentStatus] = None
     payment_method: Optional[PaymentMethod] = None
     category_id: Optional[UUID] = None
-    supplier_name: Optional[str] = None
+    contact_id: Optional[UUID] = None
     min_amount: Optional[Decimal] = None
     max_amount: Optional[Decimal] = None
     date_from: Optional[datetime] = None
@@ -427,7 +421,7 @@ class OverdueExpenseResponse(BaseModel):
     """Response for overdue invoice tracking"""
     id: UUID
     description: str
-    supplier_name: str
+    contact_name: str
     invoice_number: Optional[str]
     total_amount: Decimal
     payment_due_date: datetime

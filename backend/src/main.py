@@ -9,6 +9,7 @@ from src.firebase.auth import initialize_firebase
 # Import models to register them with SQLAlchemy
 from src.users.models import User, UserSettings
 from src.categories.models import Category
+from src.contacts.models import Contact
 from src.expenses.models import Expense
 from src.business.models import BusinessSettings, TaxConfiguration
 from src.team.models import TeamMember, TeamInvitation

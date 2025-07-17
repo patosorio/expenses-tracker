@@ -29,4 +29,21 @@ export async function logout(): Promise<{ message: string }> {
   }
 
   return response.json();
+}
+
+export async function resetPassword(email: string): Promise<{ message: string }> {
+  const response = await fetch(`${API_URL}/auth/reset-password`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ email }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ detail: 'Failed to send reset email' }));
+    throw new Error(error.detail || 'Failed to send reset email');
+  }
+
+  return response.json();
 } 

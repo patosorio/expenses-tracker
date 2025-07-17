@@ -41,6 +41,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         try {
           const token = await user.getIdToken();
           setToken(token);
+          localStorage.setItem('firebase-token', token);
           
           // Verify token with backend and get user profile
           const response = await verifyToken(token);
@@ -51,11 +52,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           await auth.signOut();
           setUser(null);
           setToken(null);
+          localStorage.removeItem('firebase-token');
           setProfile(null);
           router.push('/sign-in');
         }
       } else {
         setToken(null);
+        localStorage.removeItem('firebase-token');
         setProfile(null);
       }
       
@@ -70,6 +73,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       await signOut(auth);
       setUser(null);
       setToken(null);
+      localStorage.removeItem('firebase-token');
       setProfile(null);
       router.push('/sign-in');
     } catch (error) {

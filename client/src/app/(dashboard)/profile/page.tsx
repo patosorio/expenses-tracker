@@ -2,26 +2,29 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/contexts/AuthContext';
-import { updateUserProfile, getUserProfile } from '@/lib/api/users';
+import { updateUserProfile, getCurrentUserProfile } from '@/lib/api/users';
 import { UserProfile as UserProfileType } from '@/lib/types/user';
-import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 
 export default function UserProfile() {
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const [profile, setProfile] = useState<UserProfileType | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    fetchProfile();
-  }, []);
+    if (token) {
+      fetchProfile();
+    }
+  }, [token]);
 
   const fetchProfile = async () => {
+    if (!token) return;
     try {
-      const response = await getUserProfile();
-      setProfile(response.data);
+      const response = await getCurrentUserProfile(token);
+      setProfile(response);
     } catch (error) {
       console.error('Error fetching profile:', error);
     } finally {
@@ -30,10 +33,11 @@ export default function UserProfile() {
   };
 
   const handleSave = async (formData: Partial<UserProfileType>) => {
+    if (!token) return;
     setSaving(true);
     try {
-      const response = await updateUserProfile(formData);
-      setProfile(response.data);
+      const response = await updateUserProfile(token, formData);
+      setProfile(response);
       setIsEditing(false);
     } catch (error) {
       console.error('Error updating profile:', error);
@@ -53,7 +57,7 @@ export default function UserProfile() {
           <h1 className="text-2xl font-bold">User Profile</h1>
           <Button
             onClick={() => setIsEditing(!isEditing)}
-            variant={isEditing ? 'secondary' : 'primary'}
+            variant={isEditing ? 'secondary' : 'default'}
           >
             {isEditing ? 'Cancel' : 'Edit Profile'}
           </Button>
@@ -84,23 +88,15 @@ function ProfileView({ profile }: { profile: UserProfileType | null }) {
           <p className="mt-1 text-sm text-gray-900">{profile.email}</p>
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700">Display Name</label>
-          <p className="mt-1 text-sm text-gray-900">{profile.display_name || 'Not set'}</p>
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700">First Name</label>
-          <p className="mt-1 text-sm text-gray-900">{profile.first_name || 'Not set'}</p>
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Last Name</label>
-          <p className="mt-1 text-sm text-gray-900">{profile.last_name || 'Not set'}</p>
+          <label className="block text-sm font-medium text-gray-700">Full Name</label>
+          <p className="mt-1 text-sm text-gray-900">{profile.full_name || 'Not set'}</p>
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700">Company</label>
           <p className="mt-1 text-sm text-gray-900">{profile.company || 'Not set'}</p>
         </div>
         <div>
-          <label className="block text-sm font-medium text-bicolor-700">Role</label>
+          <label className="block text-sm font-medium text-gray-700">Role</label>
           <p className="mt-1 text-sm text-gray-900">{profile.role}</p>
         </div>
       </div>
@@ -118,14 +114,8 @@ function EditProfileForm({
   saving: boolean;
 }) {
   const [formData, setFormData] = useState({
-    display_name: profile?.display_name || '',
-    first_name: profile?.first_name || '',
-    last_name: profile?.last_name || '',
+    full_name: profile?.full_name || '',
     company: profile?.company || '',
-    department: profile?.department || '',
-    job_title: profile?.job_title || '',
-    phone_number: profile?.phone_number || '',
-    bio: profile?.bio || '',
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -136,43 +126,29 @@ function EditProfileForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Input
-          label="Display Name"
-          value={formData.display_name}
-          onChange={(e) => setFormData({...formData, display_name: e.target.value})}
-        />
-        <Input
-          label="First Name"
-          value={formData.first_name}
-          onChange={(e) => setFormData({...formData, first_name: e.target.value})}
-        />
-        <Input
-          label="Last Name"
-          value={formData.last_name}
-          onChange={(e) => setFormData({...formData, last_name: e.target.value})}
-        />
-        <Input
-          label="Company"
-          value={formData.company}
-          onChange={(e) => setFormData({...formData, company: e.target.value})}
-        />
-        <Input
-          label="Department"
-          value={formData.department}
-          onChange={(e) => setFormData({...formData, department: e.target.value})}
-        />
-        <Input
-          label="Job Title"
-          value={formData.job_title}
-          onChange={(e) => setFormData({...formData, job_title: e.target.value})}
-        />
+        <div className="flex flex-col gap-2">
+          <label htmlFor="full_name" className="text-sm font-medium">Full Name</label>
+          <Input
+            id="full_name"
+            value={formData.full_name}
+            onChange={(e) => setFormData({...formData, full_name: e.target.value})}
+          />
+        </div>
+        <div className="flex flex-col gap-2">
+          <label htmlFor="company" className="text-sm font-medium">Company</label>
+          <Input
+            id="company"
+            value={formData.company}
+            onChange={(e) => setFormData({...formData, company: e.target.value})}
+          />
+        </div>
       </div>
       
       <div className="flex justify-end space-x-2">
         <Button
           type="submit"
           disabled={saving}
-          variant="primary"
+          variant="default"
         >
           {saving ? 'Saving...' : 'Save Changes'}
         </Button>

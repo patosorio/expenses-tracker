@@ -3,6 +3,7 @@ from fastapi import APIRouter
 from src.auth.routes import router as auth_router
 from src.users.routes import router as users_router
 from src.categories.routes import router as categories_router
+from src.contacts.routes import router as contacts_router
 from src.expenses.routes import router as expenses_router
 from src.business.routes import router as business_router
 from src.team.routes import router as team_router
@@ -25,6 +26,12 @@ api_router.include_router(
     categories_router,
     prefix="/categories",
     tags=["Categories"]
+)
+
+api_router.include_router(
+    contacts_router,
+    prefix="/contacts",
+    tags=["Contacts"]
 )
 
 api_router.include_router(

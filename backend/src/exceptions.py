@@ -59,3 +59,11 @@ class TeamInvitationExpiredError(ValidationError):
 class DuplicateTeamMemberError(ValidationError):
     """Raised when trying to invite a user who is already a team member"""
     pass
+
+class ContactNotFoundError(NotFoundError):
+    """Raised when a contact is not found"""
+    pass
+
+class ContactAlreadyExistsError(ValidationError):
+    """Raised when trying to create a contact that already exists"""
+    pass

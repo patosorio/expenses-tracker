@@ -26,6 +26,10 @@ class Settings(BaseSettings):
     # Firebase
     FIREBASE_SERVICE_ACCOUNT_PATH: str
 
+    # Google Cloud Services
+    GOOGLE_APPLICATION_CREDENTIALS: str
+    GEMINI_API_KEY: str
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"

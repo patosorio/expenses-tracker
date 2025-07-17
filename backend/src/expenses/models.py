@@ -11,8 +11,8 @@ from src.database import Base
 
 
 class ExpenseType(str, PyEnum):
-    SIMPLE = "simple"  # Receipt-type expenses, paid immediately
-    INVOICE = "invoice"  # Invoice-type expenses with payment terms
+    simple = "simple"  # Receipt-type expenses, paid immediately
+    invoice = "invoice"  # Invoice-type expenses with payment terms
 
 
 class PaymentMethod(str, PyEnum):
@@ -55,7 +55,7 @@ class Expense(Base):
     expense_date = Column(DateTime(timezone=True), nullable=False, index=True)
     notes = Column(Text, nullable=True)
     receipt_url = Column(String(500), nullable=True)
-    expense_type = Column(Enum(ExpenseType), nullable=False, default=ExpenseType.SIMPLE)
+    expense_type = Column(Enum(ExpenseType), nullable=False, default=ExpenseType.simple)
     
     # Multitenant support
     user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
@@ -75,9 +75,15 @@ class Expense(Base):
     
     # Invoice-specific fields
     invoice_number = Column(String(100), nullable=True)
-    supplier_name = Column(String(200), nullable=True)
-    supplier_tax_id = Column(String(50), nullable=True)
     payment_due_date = Column(DateTime(timezone=True), nullable=True, index=True)
+    
+    # Contact relationship (for vendors/suppliers)
+    contact_id = Column(
+        PostgresUUID(as_uuid=True),
+        ForeignKey("contacts.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True
+    )
     
     # Financial fields - using Decimal for precision
     base_amount = Column(Numeric(10, 2), nullable=False)  # Amount before tax
@@ -104,6 +110,7 @@ class Expense(Base):
     # Relationships
     user = relationship("User")
     category = relationship("Category")
+    contact = relationship("Contact", back_populates="expenses")
     tax_config = relationship("TaxConfiguration", back_populates="expenses")
     attachments = relationship("ExpenseAttachment", back_populates="expense", cascade="all, delete-orphan")
     document_analysis = relationship("DocumentAnalysis", back_populates="expense", uselist=False, cascade="all, delete-orphan")
@@ -126,8 +133,8 @@ class Expense(Base):
         
         # Business logic constraints
         CheckConstraint(
-            "expense_type = 'simple' OR (expense_type = 'invoice' AND supplier_name IS NOT NULL)",
-            name='ck_expense_invoice_requires_supplier'
+            "expense_type = 'simple' OR (expense_type = 'invoice' AND contact_id IS NOT NULL)",
+            name='ck_expense_invoice_requires_contact'
         ),
         CheckConstraint(
             "payment_date IS NULL OR payment_date >= expense_date",
@@ -147,6 +154,7 @@ class Expense(Base):
         # Performance indexes
         Index('ix_expenses_user_date', 'user_id', 'expense_date'),
         Index('ix_expenses_user_category', 'user_id', 'category_id'),
+        Index('ix_expenses_user_contact', 'user_id', 'contact_id'),
         Index('ix_expenses_user_type', 'user_id', 'expense_type'),
         Index('ix_expenses_user_status', 'user_id', 'payment_status'),
         Index('ix_expenses_overdue', 'user_id', 'payment_due_date', 'payment_status'),

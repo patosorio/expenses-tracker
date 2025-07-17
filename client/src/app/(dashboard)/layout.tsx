@@ -1,6 +1,7 @@
 "use client"
 
 import type React from "react"
+import { useState } from "react"
 
 import { useAuth } from "@/lib/contexts/AuthContext"
 import { DashboardSidebar } from "@/components/layout/dashboard-sidebar"
@@ -15,6 +16,7 @@ export default function DashboardLayout({
 }) {
   const { user, loading } = useAuth()
   const router = useRouter()
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
 
   useEffect(() => {
     if (!loading && !user) {
@@ -38,9 +40,12 @@ export default function DashboardLayout({
     <div className="min-h-screen bg-background">
       <div className="flex h-screen">
         <div className="fixed inset-y-0 z-50">
-          <DashboardSidebar />
+          <DashboardSidebar 
+            collapsed={sidebarCollapsed} 
+            onToggleCollapsed={() => setSidebarCollapsed(!sidebarCollapsed)} 
+          />
         </div>
-        <div className="flex-1 flex flex-col pl-64">
+        <div className={`flex-1 flex flex-col transition-all duration-300 ${sidebarCollapsed ? 'pl-16' : 'pl-64'}`}>
           <div className="sticky top-0 z-40">
             <DashboardTopbar />
           </div>

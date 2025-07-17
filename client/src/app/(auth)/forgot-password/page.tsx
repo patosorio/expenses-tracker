@@ -4,8 +4,8 @@ import type React from "react"
 
 import { useState } from "react"
 import Link from "next/link"
-import { api } from "@/lib/api"
-import { FloatingInput } from "@/components/floating-input"
+import { resetPassword } from "@/lib/api/auth"
+import { FloatingInput } from "@/components/layout/floating-input"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { CheckCircle } from "lucide-react"
@@ -22,7 +22,7 @@ export default function ForgotPasswordPage() {
     setError("")
 
     try {
-      await api.resetPassword(email)
+      await resetPassword(email)
       setSuccess(true)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to send reset email")

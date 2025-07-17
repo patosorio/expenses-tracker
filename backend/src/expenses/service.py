@@ -11,6 +11,7 @@ from src.expenses.models import (
     Expense, DocumentAnalysis, ExpenseAttachment,
     ExpenseType, PaymentMethod, PaymentStatus, AnalysisStatus
 )
+from src.contacts.models import Contact
 from src.business.models import TaxConfiguration
 from src.expenses.schemas import (
     SimpleExpenseCreate, InvoiceExpenseCreate, ExpenseUpdate,
@@ -45,7 +46,7 @@ class ExpenseService:
                 expense_date=expense_data.expense_date,
                 notes=expense_data.notes,
                 receipt_url=expense_data.receipt_url,
-                expense_type=ExpenseType.SIMPLE,
+                expense_type=ExpenseType.simple,
                 category_id=expense_data.category_id,
                 payment_method=expense_data.payment_method,
                 payment_status=PaymentStatus.PAID,  # Simple expenses are paid immediately
@@ -94,14 +95,13 @@ class ExpenseService:
                 expense_date=expense_data.expense_date,
                 notes=expense_data.notes,
                 receipt_url=expense_data.receipt_url,
-                expense_type=ExpenseType.INVOICE,
+                expense_type=ExpenseType.invoice,
                 category_id=expense_data.category_id,
                 payment_method=expense_data.payment_method,
                 payment_status=PaymentStatus.PENDING,  # Invoices start as pending
                 payment_date=None,  # Not paid yet
                 invoice_number=expense_data.invoice_number,
-                supplier_name=expense_data.supplier_name,
-                supplier_tax_id=expense_data.supplier_tax_id,
+                contact_id=expense_data.contact_id,
                 payment_due_date=expense_data.payment_due_date,
                 base_amount=expense_data.base_amount,
                 tax_amount=tax_amount,
@@ -132,6 +132,7 @@ class ExpenseService:
                 selectinload(Expense.attachments),
                 selectinload(Expense.document_analysis),
                 selectinload(Expense.category),
+                selectinload(Expense.contact),
                 selectinload(Expense.tax_config)
             )
             .filter(and_(Expense.id == expense_id, Expense.user_id == user_id, Expense.is_active == True))
@@ -163,7 +164,7 @@ class ExpenseService:
                 base_amount = update_data.get('base_amount', expense.base_amount)
                 tax_config_id = update_data.get('tax_config_id', expense.tax_config_id)
                 
-                if tax_config_id and expense.expense_type == ExpenseType.INVOICE:
+                if tax_config_id and expense.expense_type == ExpenseType.invoice:
                     tax_config = await self.get_user_tax_config(user_id, tax_config_id)
                     if tax_config:
                         tax_amount = self._calculate_tax_amount(base_amount, tax_config.tax_rate)
@@ -259,8 +260,8 @@ class ExpenseService:
             if filters.category_id:
                 query = query.filter(Expense.category_id == filters.category_id)
             
-            if filters.supplier_name:
-                query = query.filter(Expense.supplier_name.ilike(f"%{filters.supplier_name}%"))
+            if filters.contact_id:
+                query = query.filter(Expense.contact_id == filters.contact_id)
             
             if filters.min_amount:
                 query = query.filter(Expense.total_amount >= filters.min_amount)
@@ -277,7 +278,7 @@ class ExpenseService:
             if filters.overdue_only:
                 query = query.filter(
                     and_(
-                        Expense.expense_type == ExpenseType.INVOICE,
+                        Expense.expense_type == ExpenseType.invoice,
                         Expense.payment_status != PaymentStatus.PAID,
                         Expense.payment_due_date < datetime.utcnow()
                     )
@@ -290,10 +291,10 @@ class ExpenseService:
             
             if filters.search:
                 search_pattern = f"%{filters.search}%"
-                query = query.filter(
+                query = query.outerjoin(Contact).filter(
                     or_(
                         Expense.description.ilike(search_pattern),
-                        Expense.supplier_name.ilike(search_pattern),
+                        Contact.name.ilike(search_pattern),
                         Expense.invoice_number.ilike(search_pattern),
                         Expense.notes.ilike(search_pattern)
                     )
@@ -323,10 +324,11 @@ class ExpenseService:
         try:
             overdue_expenses = (
                 self.db.query(Expense)
+                .options(selectinload(Expense.contact))
                 .filter(
                     and_(
                         Expense.user_id == user_id,
-                        Expense.expense_type == ExpenseType.INVOICE,
+                        Expense.expense_type == ExpenseType.invoice,
                         Expense.payment_status != PaymentStatus.PAID,
                         Expense.payment_due_date < datetime.utcnow(),
                         Expense.is_active == True
@@ -343,7 +345,7 @@ class ExpenseService:
                 overdue_item = OverdueExpenseResponse(
                     id=expense.id,
                     description=expense.description,
-                    supplier_name=expense.supplier_name,
+                    contact_name=expense.contact.name if expense.contact else "Unknown Contact",
                     invoice_number=expense.invoice_number,
                     total_amount=expense.total_amount,
                     payment_due_date=expense.payment_due_date,
@@ -512,10 +514,14 @@ class ExpenseService:
                 extracted.update(user_corrections)
             
             # Determine expense type based on extracted data
-            expense_type = ExpenseType.INVOICE if extracted.get('invoice_number') or extracted.get('supplier_name') else ExpenseType.SIMPLE
+            expense_type = ExpenseType.invoice if extracted.get('invoice_number') else ExpenseType.simple
             
             # Create expense based on type
-            if expense_type == ExpenseType.INVOICE:
+            if expense_type == ExpenseType.invoice:
+                # Invoice creation requires a contact_id
+                if not extracted.get('contact_id'):
+                    raise ValidationError("Invoice expenses require a contact_id. Please specify a contact in user_corrections.")
+                
                 # Find or create default tax config for tax calculation
                 tax_config = await self.get_default_tax_config(user_id)
                 tax_config_id = tax_config.id if tax_config else None
@@ -523,7 +529,7 @@ class ExpenseService:
                 expense_data = InvoiceExpenseCreate(
                     description=extracted.get('description', 'Imported from document'),
                     expense_date=extracted.get('expense_date', datetime.utcnow()),
-                    supplier_name=extracted.get('supplier_name', 'Unknown Supplier'),
+                    contact_id=uuid.UUID(extracted['contact_id']),
                     invoice_number=extracted.get('invoice_number'),
                     base_amount=Decimal(str(extracted.get('base_amount', 0))),
                     tax_config_id=tax_config_id,
@@ -593,7 +599,7 @@ class ExpenseService:
                 .filter(
                     and_(
                         Expense.user_id == user_id,
-                        Expense.expense_type == ExpenseType.INVOICE,
+                        Expense.expense_type == ExpenseType.invoice,
                         Expense.payment_status != PaymentStatus.PAID,
                         Expense.payment_due_date < datetime.utcnow(),
                         Expense.is_active == True

@@ -301,51 +301,37 @@ async def analyze_document(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Upload and analyze document with Google Vision API"""
+    """Analyze document with Google Vision API"""
     try:
         # Validate file type
-        allowed_types = ['application/pdf', 'image/jpeg', 'image/png', 'image/tiff']
-        if file.content_type not in allowed_types:
+        if not file.content_type.startswith(('image/', 'application/pdf')):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Unsupported file type. Please upload PDF, JPEG, PNG, or TIFF files."
+                detail="Invalid file type. Only images and PDFs are supported."
             )
-        
-        # Validate file size (50MB max)
-        if file.size > 52428800:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="File size too large. Maximum size is 50MB."
-            )
-        
-        service = ExpenseService(db)
         
         # Create document analysis record
-        analysis_data = DocumentAnalysisCreate(
+        service = ExpenseService(db)
+        analysis = await service.create_document_analysis(
+            current_user.id,
+            DocumentAnalysisCreate(
             original_filename=file.filename,
             file_type=file.content_type,
             analysis_status=AnalysisStatus.PENDING
         )
+        )
         
-        analysis = await service.create_document_analysis(current_user.id, analysis_data)
+        # Process file asynchronously
+        # TODO: Implement async processing with Google Vision API
+        # For now, just return the pending analysis
         
-        # TODO: Integrate with Google Vision API here
-        # This would involve:
-        # 1. Upload file to cloud storage
-        # 2. Process with Google Vision API
-        # 3. Extract structured data
-        # 4. Update analysis record with results
-        
-        # For now, return the analysis record
         return analysis
         
-    except HTTPException:
-        raise
     except Exception as e:
         logger.error(f"Error analyzing document: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to analyze document"
+            detail=f"Failed to analyze document: {str(e)}"
         )
 
 
@@ -388,15 +374,18 @@ async def create_expense_from_analysis(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Create expense from OCR analysis results"""
+    """Create expense from document analysis results"""
     try:
         service = ExpenseService(db)
         expense = await service.create_expense_from_analysis(
-            current_user.id, analysis_id, user_corrections
+            current_user.id,
+            analysis_id,
+            user_corrections
         )
         return expense
+        
     except Exception as e:
-        logger.error(f"Error creating expense from analysis {analysis_id}: {str(e)}")
+        logger.error(f"Error creating expense from analysis: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Failed to create expense from analysis: {str(e)}"
@@ -484,12 +473,13 @@ async def get_invoice_expenses(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Get only invoice expenses with specialized filtering"""
+    """Get invoice expenses with filtering"""
     try:
         service = ExpenseService(db)
         
+        # Build filter object for invoices only
         filters = ExpenseFilter(
-            expense_type=ExpenseType.INVOICE,
+            expense_type=ExpenseType.invoice,
             payment_status=payment_status,
             supplier_name=supplier_name,
             overdue_only=overdue_only
@@ -499,7 +489,9 @@ async def get_invoice_expenses(
             current_user.id, filters, skip, limit
         )
         
+        # Convert to list response format
         expense_list = [ExpenseListResponse.model_validate(expense) for expense in expenses]
+        
         pages = (total + limit - 1) // limit
         
         return ExpenseListPaginatedResponse(

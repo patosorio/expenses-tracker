@@ -24,12 +24,17 @@ async function apiCall<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
-  const token = document.cookie.split('; ').find(row => row.startsWith('firebase-token='))?.split('=')[1]
+  // Get token from AuthContext
+  const token = localStorage.getItem('firebase-token')
+  
+  if (!token) {
+    throw new Error('Not authenticated')
+  }
   
   const response = await fetch(`${API_URL}${endpoint}`, {
     headers: {
       'Content-Type': 'application/json',
-      ...(token && { Authorization: `Bearer ${token}` }),
+      'Authorization': `Bearer ${token}`,
       ...options.headers,
     },
     ...options,
@@ -189,13 +194,38 @@ export const categoriesApi = {
    * Get all categories
    */
   getCategories: (): Promise<Category[]> =>
-    apiCall<Category[]>('/categories'),
+    apiCall<{ categories: Category[] }>('/categories').then(response => response.categories),
 
   /**
    * Get categories with hierarchy
    */
   getCategoriesHierarchy: (): Promise<CategoryWithChildren[]> =>
-    apiCall<CategoryWithChildren[]>('/categories/hierarchy'),
+    apiCall<{ categories: Category[] }>('/categories').then(response => {
+      // Build hierarchy
+      const categories = response.categories
+      const categoryMap = new Map(
+        categories.map(cat => [
+          cat.id, 
+          { ...cat, children: [] } as CategoryWithChildren
+        ])
+      )
+      const rootCategories: CategoryWithChildren[] = []
+
+      // Build parent-child relationships
+      categories.forEach(category => {
+        const categoryWithChildren = categoryMap.get(category.id)!
+        if (category.parentId) {
+          const parent = categoryMap.get(category.parentId)
+          if (parent) {
+            parent.children.push(categoryWithChildren)
+          }
+        } else {
+          rootCategories.push(categoryWithChildren)
+        }
+      })
+
+      return rootCategories
+    }),
 
   /**
    * Create new category
@@ -203,7 +233,14 @@ export const categoriesApi = {
   createCategory: (category: CategoryFormData): Promise<Category> =>
     apiCall<Category>('/categories', {
       method: 'POST',
-      body: JSON.stringify(category),
+      body: JSON.stringify({
+        name: category.name,
+        type: category.type,
+        color: category.color,
+        icon: category.icon,
+        parent_id: category.parentId, 
+        is_default: category.isDefault
+      }),
     }),
 
   /**
@@ -230,15 +267,6 @@ export const categoriesApi = {
     apiCall<Category>(`/categories/${id}/move`, {
       method: 'POST',
       body: JSON.stringify({ parentId }),
-    }),
-
-  /**
-   * Bulk create default categories
-   */
-  createDefaultCategories: (type: 'expense' | 'income' | 'both'): Promise<Category[]> =>
-    apiCall<Category[]>('/categories/defaults', {
-      method: 'POST',
-      body: JSON.stringify({ type }),
     }),
 }
 
