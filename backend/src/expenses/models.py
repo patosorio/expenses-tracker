@@ -35,9 +35,6 @@ class AnalysisStatus(str, PyEnum):
     FAILED = "failed"
 
 
-
-
-
 class Expense(Base):
     """Main expense model supporting both simple receipts and invoices"""
     __tablename__ = "expenses"

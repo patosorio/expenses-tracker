@@ -33,7 +33,12 @@ class ExpenseService:
         self.db = db or next(get_db())
 
     # Core CRUD Operations
-    async def create_simple_expense(self, user_id: str, expense_data: SimpleExpenseCreate) -> Expense:
+    async def create_simple_expense(
+            self,
+            user_id: str,
+            expense_data: SimpleExpenseCreate,
+            contact_id: Optional[str] = None
+        ) -> Expense:
         """Create a simple (receipt) expense with automatic payment date setting"""
         try:
             # Validate category belongs to user and is expense type
@@ -50,8 +55,8 @@ class ExpenseService:
                 expense_type=ExpenseType.simple,
                 category_id=expense_data.category_id,
                 payment_method=expense_data.payment_method,
-                payment_status=PaymentStatus.PAID,  # Simple expenses are paid immediately
-                payment_date=expense_data.expense_date,  # Auto-set to expense date
+                payment_status=PaymentStatus.PAID,
+                payment_date=expense_data.expense_date,
                 base_amount=expense_data.total_amount,
                 tax_amount=Decimal('0.00'),
                 total_amount=expense_data.total_amount,
@@ -369,8 +374,63 @@ class ExpenseService:
             logger.error(f"Error getting overdue expenses for user {user_id}: {str(e)}")
             raise
 
+    async def get_expenses_paginated(
+        self,
+        user_id: str,
+        skip: int = 0,
+        limit: int = 100,
+        sort_by: str = "expense_date",
+        sort_order: str = "desc"
+    ) -> Tuple[List[Expense], int]:
+        """Simple paginated expenses without complex filtering"""
+        try:
+            query = (
+                self.db.query(Expense)
+                .filter(and_(Expense.user_id == user_id, Expense.is_active == True))
+            )
+            
+            # Apply sorting
+            sort_column = getattr(Expense, sort_by, Expense.expense_date)
+            if sort_order.lower() == "asc":
+                query = query.order_by(asc(sort_column))
+            else:
+                query = query.order_by(desc(sort_column))
+            
+            total = query.count()
+            expenses = query.offset(skip).limit(limit).all()
+            
+            return expenses, total
+        except Exception as e:
+            logger.error(f"Error getting paginated expenses for user {user_id}: {str(e)}")
+            raise
 
-
+    async def get_expenses_by_type(
+        self,
+        user_id: str,
+        expense_type: ExpenseType,
+        skip: int = 0,
+        limit: int = 100
+    ) -> Tuple[List[Expense], int]:
+        """Get expenses by type (simple or invoice)"""
+        try:
+            query = (
+                self.db.query(Expense)
+                .filter(and_(
+                    Expense.user_id == user_id,
+                    Expense.expense_type == expense_type,
+                    Expense.is_active == True
+                ))
+                .order_by(desc(Expense.expense_date))
+            )
+            
+            total = query.count()
+            expenses = query.offset(skip).limit(limit).all()
+            
+            return expenses, total
+        except Exception as e:
+            logger.error(f"Error getting {expense_type} expenses for user {user_id}: {str(e)}")
+            raise
+       
     # Document Analysis & OCR
     async def create_document_analysis(self, user_id: str, analysis_data: DocumentAnalysisCreate) -> DocumentAnalysis:
         """Create document analysis record for OCR processing"""
@@ -658,7 +718,7 @@ class ExpenseService:
         
         return category
 
-    def _calculate_tax_amount(self, base_amount: Decimal, tax_rate: Decimal) -> Decimal:
+    async def _calculate_tax_amount(self, base_amount: Decimal, tax_rate: Decimal) -> Decimal:
         """Calculate tax amount with proper rounding"""
         return (base_amount * tax_rate / 100).quantize(Decimal('0.01'))
 

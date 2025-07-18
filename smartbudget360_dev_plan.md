@@ -1,9 +1,9 @@
-# SmartBudget360 🚀
+# SmartBudget360 
 
 > **AI-Powered Business Financial Intelligence Platform**  
 > Transform expense tracking into intelligent business automation with advanced AI forecasting, OCR processing, and comprehensive financial analytics.
 
-## 🎯 Project Vision
+## Project Vision
 
 SmartBudget360 is a comprehensive SaaS platform that revolutionizes how small to medium businesses manage their finances. We combine traditional expense tracking with cutting-edge AI to provide:
 
@@ -13,9 +13,9 @@ SmartBudget360 is a comprehensive SaaS platform that revolutionizes how small to
 - **Team Collaboration** with role-based permissions
 - **Automated Reporting** with custom report builders
 
-## 🔥 Core Features
+## Core Features
 
-### 💰 Expense Management
+### Expense Management
 - **Smart OCR Processing**: Google Vision API automatically extracts data from receipts/invoices
 - **Hierarchical Categories**: Unlimited depth organization system
 - **Multi-Tax Support**: Configurable tax rates with automatic calculations
@@ -23,7 +23,7 @@ SmartBudget360 is a comprehensive SaaS platform that revolutionizes how small to
 - **Bulk Operations**: Import/export, batch processing
 - **Receipt Management**: Multiple attachments per expense
 
-### 🤖 AI & Machine Learning
+### AI & Machine Learning
 - **Expense Categorization**: TF-IDF + Logistic Regression for smart categorization
 - **Financial Forecasting**: Prophet-based time series forecasting
 - **Anomaly Detection**: Isolation Forest for spending pattern analysis
@@ -31,7 +31,7 @@ SmartBudget360 is a comprehensive SaaS platform that revolutionizes how small to
 - **Trend Analysis**: Advanced spending pattern insights
 - **Smart Insights**: Automated financial recommendations
 
-### 📊 Business Intelligence
+### Business Intelligence
 - **Custom Report Builder**: Drag-and-drop report creation
 - **P&L Reports**: Automated profit & loss statements
 - **Cash Flow Analysis**: Detailed cash flow projections
@@ -39,21 +39,21 @@ SmartBudget360 is a comprehensive SaaS platform that revolutionizes how small to
 - **Budget vs Actual**: Real-time budget performance tracking
 - **Advanced Analytics**: Spending trends, category analysis, forecasting
 
-### 👥 Team & Collaboration
+### Team & Collaboration
 - **Multi-User Support**: Team member invitations and management
 - **Role-Based Permissions**: Admin, Manager, User, Guest roles
 - **Project Management**: Link expenses to specific business projects
 - **Approval Workflows**: Expense approval chains
 - **Team Analytics**: Department-wise spending analysis
 
-### 🔗 Integrations & Automation
+### Integrations & Automation
 - **Google Workspace**: Sheets integration, Drive backup
 - **Email Automation**: Scheduled reports, budget alerts
 - **API Integration**: RESTful APIs for third-party connections
 - **Webhook Support**: Real-time data synchronization
 - **Export Capabilities**: PDF, CSV, Excel formats
 
-## 🛠 Technology Stack
+## Technology Stack
 
 ### Backend
 - **Framework**: FastAPI (Python 3.11+)
@@ -81,7 +81,7 @@ SmartBudget360 is a comprehensive SaaS platform that revolutionizes how small to
 - **Monitoring**: Google Cloud Monitoring + Sentry
 - **CI/CD**: GitHub Actions
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 smartbudget360/
@@ -115,78 +115,8 @@ smartbudget360/
 └── docs/                   # Documentation
 ```
 
-## 🚀 Quick Start
 
-### Prerequisites
-- Python 3.11+
-- Node.js 18+
-- PostgreSQL 14+
-- Redis 6+
-- Google Cloud Account (for Vision API)
-- Firebase Project (for authentication)
-
-### Backend Setup
-
-```bash
-# Clone repository
-git clone https://github.com/yourusername/smartbudget360.git
-cd smartbudget360/backend
-
-# Create virtual environment
-python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Set up environment variables
-cp .env.example .env
-# Edit .env with your database and API credentials
-
-# Run database migrations
-alembic upgrade head
-
-# Start development server
-uvicorn src.main:app --reload --host 0.0.0.0 --port 8000
-```
-
-### Frontend Setup
-
-```bash
-cd ../client
-
-# Install dependencies
-npm install
-
-# Set up environment variables
-cp .env.local.example .env.local
-# Edit .env.local with your API endpoints and Firebase config
-
-# Start development server
-npm run dev
-```
-
-### Environment Variables
-
-#### Backend (.env)
-```env
-DATABASE_URL=postgresql://user:password@localhost:5432/smartbudget360
-REDIS_URL=redis://localhost:6379
-FIREBASE_PROJECT_ID=your-firebase-project
-GOOGLE_CLOUD_PROJECT=your-gcp-project
-GOOGLE_APPLICATION_CREDENTIALS=path/to/service-account.json
-SECRET_KEY=your-secret-key
-```
-
-#### Frontend (.env.local)
-```env
-NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
-NEXT_PUBLIC_FIREBASE_API_KEY=your-api-key
-NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your-project.firebaseapp.com
-NEXT_PUBLIC_FIREBASE_PROJECT_ID=your-firebase-project
-```
-
-## 📈 Development Phases
+## Development Phases
 
 ### Phase 1: Foundation (Weeks 1-2) ✅
 - [x] Project setup and infrastructure
@@ -199,6 +129,11 @@ NEXT_PUBLIC_FIREBASE_PROJECT_ID=your-firebase-project
 - [x] Hierarchical categories system
 - [ ] Complete expense management
 - [ ] Tax configuration system
+- [ ] Add Business data connect to backend
+- [ ] Add Projects
+- [ ] Add Budgets
+- [ ] Add Forecast frontend idea
+- [ ] Add Reports frontend idea
 
 ### Phase 3: AI/ML Foundation (Weeks 5-6) 📋
 - [ ] Google Vision OCR integration
@@ -208,7 +143,7 @@ NEXT_PUBLIC_FIREBASE_PROJECT_ID=your-firebase-project
 
 ### Phase 4: Frontend MVP (Weeks 7-8) 📋
 - [x] Next.js setup and authentication
-- [x] Dashboard and navigation
+- [ ] Dashboard and navigation (missing dashboard)
 - [x] Settings panel implementation
 - [ ] Expense management UI
 - [ ] OCR processing interface
