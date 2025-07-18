@@ -13,10 +13,9 @@ export enum PaymentMethod {
 }
 
 export enum PaymentStatus {
-  PENDING = "PENDING",
-  PAID = "PAID",
-  CANCELLED = "CANCELLED",
-  OVERDUE = "OVERDUE"
+  PENDING = "pending",
+  PAID = "paid",
+  REFUNDED = "refunded"
 }
 
 export interface Expense {
@@ -26,9 +25,8 @@ export interface Expense {
   expense_type: ExpenseType
   notes?: string
   receipt_url?: string
-  supplier_name?: string
-  supplier_tax_id?: string
   invoice_number?: string
+  payment_due_date?: string
   base_amount: number
   tax_amount: number
   total_amount: number
@@ -36,12 +34,13 @@ export interface Expense {
   payment_status: PaymentStatus
   payment_method: PaymentMethod
   payment_date?: string
-  payment_due_date?: string
-  is_overdue: boolean
-  days_overdue: number
   category_id: UUID
+  contact_id?: UUID
+  tax_config_id?: UUID
   tags?: string[]
   custom_fields?: Record<string, any>
+  is_overdue: boolean
+  days_overdue: number
   created_at: string
   updated_at?: string
   is_active: boolean

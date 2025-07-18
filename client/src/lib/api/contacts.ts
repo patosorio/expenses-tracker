@@ -4,7 +4,8 @@ import {
   ContactListResponse, 
   CreateContactPayload,
   UpdateContactPayload,
-  ContactSummaryResponse
+  ContactSummaryResponse,
+  ContactType
 } from "@/lib/types/contacts"
 import { UUID } from "crypto"
 import { getAuth } from "firebase/auth"
@@ -76,6 +77,43 @@ export async function getContacts(
     return data
   } catch (error) {
     console.error('Error in getContacts:', error)
+    throw error
+  }
+}
+
+export async function searchVendorsAndSuppliers(
+  searchTerm: string,
+  limit: number = 10
+): Promise<Contact[]> {
+  if (searchTerm.length < 2) {
+    return []
+  }
+
+  try {
+    // Make two separate calls to get both VENDOR and SUPPLIER contacts
+    const [vendorsResponse, suppliersResponse] = await Promise.all([
+      getContacts(1, limit, { 
+        search: searchTerm, 
+        contact_type: ContactType.VENDOR 
+      }),
+      getContacts(1, limit, { 
+        search: searchTerm, 
+        contact_type: ContactType.SUPPLIER 
+      })
+    ])
+
+    // Combine and sort results
+    const allContacts = [
+      ...vendorsResponse.contacts,
+      ...suppliersResponse.contacts
+    ]
+
+    // Sort by name and limit to requested number
+    return allContacts
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .slice(0, limit)
+  } catch (error) {
+    console.error('Error in searchVendorsAndSuppliers:', error)
     throw error
   }
 }

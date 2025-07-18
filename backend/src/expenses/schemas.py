@@ -12,39 +12,6 @@ if TYPE_CHECKING:
 
 
 # Base Schemas
-class TaxConfigBase(BaseModel):
-    tax_name: str
-    tax_rate: Decimal
-    tax_code: Optional[str] = None
-    is_default: bool = False
-    country_code: Optional[str] = None
-
-    @field_validator('tax_name')
-    @classmethod
-    def validate_tax_name(cls, v: str) -> str:
-        if not v or not v.strip():
-            raise ValueError('Tax name cannot be empty')
-        if len(v.strip()) > 100:
-            raise ValueError('Tax name must be 100 characters or less')
-        return v.strip()
-
-    @field_validator('tax_rate')
-    @classmethod
-    def validate_tax_rate(cls, v: Decimal) -> Decimal:
-        if v < 0 or v > 100:
-            raise ValueError('Tax rate must be between 0 and 100')
-        return v
-
-    @field_validator('country_code')
-    @classmethod
-    def validate_country_code(cls, v: Optional[str]) -> Optional[str]:
-        if v is None:
-            return v
-        if len(v) != 2:
-            raise ValueError('Country code must be 2 characters (ISO 3166-1 alpha-2)')
-        return v.upper()
-
-
 class ExpenseBase(BaseModel):
     description: str
     expense_date: datetime
@@ -144,40 +111,6 @@ class DocumentAnalysisBase(BaseModel):
 
 
 # Request Schemas
-class TaxConfigCreate(TaxConfigBase):
-    """Schema for creating tax configuration"""
-    pass
-
-
-class TaxConfigUpdate(BaseModel):
-    """Schema for updating tax configuration"""
-    tax_name: Optional[str] = None
-    tax_rate: Optional[Decimal] = None
-    tax_code: Optional[str] = None
-    is_default: Optional[bool] = None
-    country_code: Optional[str] = None
-
-    @field_validator('tax_name')
-    @classmethod
-    def validate_tax_name(cls, v: Optional[str]) -> Optional[str]:
-        if v is None:
-            return v
-        if not v or not v.strip():
-            raise ValueError('Tax name cannot be empty')
-        if len(v.strip()) > 100:
-            raise ValueError('Tax name must be 100 characters or less')
-        return v.strip()
-
-    @field_validator('tax_rate')
-    @classmethod
-    def validate_tax_rate(cls, v: Optional[Decimal]) -> Optional[Decimal]:
-        if v is None:
-            return v
-        if v < 0 or v > 100:
-            raise ValueError('Tax rate must be between 0 and 100')
-        return v
-
-
 class SimpleExpenseCreate(BaseModel):
     """Schema for creating simple (receipt) expenses"""
     description: str
@@ -264,6 +197,8 @@ class ExpenseUpdate(BaseModel):
             return v
         if not v or not v.strip():
             raise ValueError('Description cannot be empty')
+        if len(v.strip()) > 500:
+            raise ValueError('Description must be 500 characters or less')
         return v.strip()
 
     @field_validator('base_amount')
@@ -277,25 +212,13 @@ class ExpenseUpdate(BaseModel):
 
 
 class AttachmentCreate(AttachmentBase):
-    """Schema for creating expense attachments"""
+    """Schema for creating attachments"""
     pass
 
 
 class DocumentAnalysisCreate(DocumentAnalysisBase):
     """Schema for creating document analysis"""
     pass
-
-
-# Response Schemas
-class TaxConfigResponse(TaxConfigBase):
-    """Schema for tax configuration responses"""
-    id: UUID
-    user_id: str
-    created_at: datetime
-    updated_at: Optional[datetime] = None
-    is_active: bool
-
-    model_config = ConfigDict(from_attributes=True)
 
 
 class AttachmentResponse(AttachmentBase):
@@ -374,7 +297,6 @@ class ExpensePreviewResponse(BaseModel):
     confidence_score: Decimal
 
 
-# Specialized Schemas
 class ExpenseFilter(BaseModel):
     """Advanced filtering options for expenses"""
     expense_type: Optional[ExpenseType] = None

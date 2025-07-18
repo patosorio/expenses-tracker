@@ -10,12 +10,11 @@ from src.expenses.service import ExpenseService
 from src.expenses.schemas import (
     # Request schemas
     SimpleExpenseCreate, InvoiceExpenseCreate, ExpenseUpdate,
-    TaxConfigCreate, TaxConfigUpdate, AttachmentCreate, DocumentAnalysisCreate,
-    ExpenseFilter,
+    AttachmentCreate, DocumentAnalysisCreate, ExpenseFilter,
     
     # Response schemas
     ExpenseResponse, ExpenseListResponse, ExpenseListPaginatedResponse,
-    TaxConfigResponse, AttachmentResponse, DocumentAnalysisResponse,
+    AttachmentResponse, DocumentAnalysisResponse,
     ExpensePreviewResponse, OverdueExpensesListResponse, ExpenseStats,
     ExpenseSummary
 )
@@ -255,42 +254,7 @@ async def mark_expense_paid(
         )
 
 
-# Tax Configuration Management
-@router.get("/tax-configs", response_model=List[TaxConfigResponse])
-async def get_tax_configs(
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """Get user's tax configurations"""
-    try:
-        service = ExpenseService(db)
-        tax_configs = await service.get_user_tax_configs(current_user.id)
-        return tax_configs
-    except Exception as e:
-        logger.error(f"Error getting tax configs: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to retrieve tax configurations"
-        )
 
-
-@router.post("/tax-configs", response_model=TaxConfigResponse, status_code=status.HTTP_201_CREATED)
-async def create_tax_config(
-    tax_data: TaxConfigCreate,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """Create tax configuration"""
-    try:
-        service = ExpenseService(db)
-        tax_config = await service.create_tax_config(current_user.id, tax_data)
-        return tax_config
-    except Exception as e:
-        logger.error(f"Error creating tax config: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Failed to create tax configuration: {str(e)}"
-        )
 
 
 # Document Analysis & OCR (Google Vision API Integration)

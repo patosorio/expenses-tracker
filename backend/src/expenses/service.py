@@ -13,9 +13,10 @@ from src.expenses.models import (
 )
 from src.contacts.models import Contact
 from src.business.models import TaxConfiguration
+from src.business.service import BusinessService
 from src.expenses.schemas import (
     SimpleExpenseCreate, InvoiceExpenseCreate, ExpenseUpdate,
-    TaxConfigCreate, TaxConfigUpdate, AttachmentCreate, DocumentAnalysisCreate,
+    AttachmentCreate, DocumentAnalysisCreate,
     ExpenseFilter, ExpenseSummary, ExpenseStats, ExpensePreviewResponse,
     OverdueExpensesListResponse, OverdueExpenseResponse
 )
@@ -82,9 +83,10 @@ class ExpenseService:
             tax_config = None
             
             if expense_data.tax_config_id:
-                tax_config = await self.get_user_tax_config(user_id, expense_data.tax_config_id)
+                business_service = BusinessService(self.db)
+                tax_config = await business_service.get_tax_configuration(str(expense_data.tax_config_id), user_id)
                 if tax_config:
-                    tax_amount = self._calculate_tax_amount(expense_data.base_amount, tax_config.tax_rate)
+                    tax_amount = self._calculate_tax_amount(expense_data.base_amount, tax_config.rate)
             
             total_amount = expense_data.base_amount + tax_amount
             
@@ -165,9 +167,10 @@ class ExpenseService:
                 tax_config_id = update_data.get('tax_config_id', expense.tax_config_id)
                 
                 if tax_config_id and expense.expense_type == ExpenseType.invoice:
-                    tax_config = await self.get_user_tax_config(user_id, tax_config_id)
+                    business_service = BusinessService(self.db)
+                    tax_config = await business_service.get_tax_configuration(str(tax_config_id), user_id)
                     if tax_config:
-                        tax_amount = self._calculate_tax_amount(base_amount, tax_config.tax_rate)
+                        tax_amount = self._calculate_tax_amount(base_amount, tax_config.rate)
                         update_data['tax_amount'] = tax_amount
                         update_data['total_amount'] = base_amount + tax_amount
                 
@@ -366,68 +369,7 @@ class ExpenseService:
             logger.error(f"Error getting overdue expenses for user {user_id}: {str(e)}")
             raise
 
-    # Tax Management
-    async def create_tax_config(self, user_id: str, tax_data: TaxConfigCreate) -> TaxConfiguration:
-        """Create tax configuration for user"""
-        try:
-            # If setting as default, unset other defaults
-            if tax_data.is_default:
-                await self._unset_default_tax_configs(user_id)
-            
-            tax_config = TaxConfiguration(
-                id=uuid.uuid4(),
-                user_id=user_id,
-                **tax_data.model_dump()
-            )
-            
-            self.db.add(tax_config)
-            self.db.commit()
-            self.db.refresh(tax_config)
-            
-            logger.info(f"Created tax config {tax_config.id} for user {user_id}")
-            return tax_config
-            
-        except Exception as e:
-            self.db.rollback()
-            logger.error(f"Error creating tax config for user {user_id}: {str(e)}")
-            raise
 
-    async def get_user_tax_configs(self, user_id: str) -> List[TaxConfiguration]:
-        """Get all active tax configurations for user"""
-        return (
-            self.db.query(TaxConfiguration)
-            .filter(and_(TaxConfiguration.user_id == user_id, TaxConfiguration.is_active == True))
-            .order_by(desc(TaxConfiguration.is_default), TaxConfiguration.tax_name)
-            .all()
-        )
-
-    async def get_user_tax_config(self, user_id: str, tax_config_id: uuid.UUID) -> Optional[TaxConfiguration]:
-        """Get specific tax configuration"""
-        return (
-            self.db.query(TaxConfiguration)
-            .filter(
-                and_(
-                    TaxConfiguration.id == tax_config_id,
-                    TaxConfiguration.user_id == user_id,
-                    TaxConfiguration.is_active == True
-                )
-            )
-            .first()
-        )
-
-    async def get_default_tax_config(self, user_id: str) -> Optional[TaxConfiguration]:
-        """Get user's default tax configuration"""
-        return (
-            self.db.query(TaxConfiguration)
-            .filter(
-                and_(
-                    TaxConfiguration.user_id == user_id,
-                    TaxConfiguration.is_default == True,
-                    TaxConfiguration.is_active == True
-                )
-            )
-            .first()
-        )
 
     # Document Analysis & OCR
     async def create_document_analysis(self, user_id: str, analysis_data: DocumentAnalysisCreate) -> DocumentAnalysis:
@@ -522,8 +464,10 @@ class ExpenseService:
                 if not extracted.get('contact_id'):
                     raise ValidationError("Invoice expenses require a contact_id. Please specify a contact in user_corrections.")
                 
-                # Find or create default tax config for tax calculation
-                tax_config = await self.get_default_tax_config(user_id)
+                # Find default tax config for tax calculation
+                business_service = BusinessService(self.db)
+                tax_configs = await business_service.get_tax_configurations(user_id, active_only=True)
+                tax_config = next((tc for tc in tax_configs if tc.is_default), None)
                 tax_config_id = tax_config.id if tax_config else None
                 
                 expense_data = InvoiceExpenseCreate(
@@ -718,9 +662,4 @@ class ExpenseService:
         """Calculate tax amount with proper rounding"""
         return (base_amount * tax_rate / 100).quantize(Decimal('0.01'))
 
-    async def _unset_default_tax_configs(self, user_id: str) -> None:
-        """Unset all default tax configurations for user"""
-        self.db.query(TaxConfiguration).filter(
-            and_(TaxConfiguration.user_id == user_id, TaxConfiguration.is_default == True)
-        ).update({'is_default': False})
-        self.db.commit()
+

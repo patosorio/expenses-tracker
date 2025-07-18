@@ -1,110 +1,156 @@
-"use client"
+'use client'
 
-import { useState } from "react"
-import { ExpenseFilters } from "@/components/expenses/ExpenseFilters"
-import { ExpenseList } from "@/components/expenses/ExpenseList"
-import { AddExpenseDialog } from "@/components/expenses/AddExpenseDialog"
-import { useToast } from "@/components/ui/use-toast"
-import type { Expense, ExpenseFilters as ExpenseFiltersType } from "@/lib/types/expenses"
-import { PaymentStatus } from "@/lib/types/expenses"
-import { getExpenses, createExpense, updateExpense, deleteExpense, markExpensePaid } from "@/lib/api/expenses"
-import { useEffect } from "react"
+import { useState, useCallback } from 'react'
+import { Receipt, Plus } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { useToast } from '@/components/ui/use-toast'
+import { ExpensesToolbar } from '@/components/expenses/ExpensesToolbar'
+import { ExpensesTable } from '@/components/expenses/ExpensesTable'
+import { ExpensesPagination } from '@/components/expenses/expenses-pagination'
+import { useExpenses } from '@/lib/hooks/expenses/use-expenses'
+import { useTableColumns } from '@/lib/hooks/expenses/use-table-columns'
+import { Expense, ExpenseFilters, CreateExpensePayload } from '@/lib/types/expenses'
+import { deleteExpense, createExpense, markExpensePaid } from '@/lib/api/expenses'
+import { AddExpenseDialog } from '@/components/expenses/AddExpenseDialog'
 
 export default function ExpensesPage() {
-  const [filters, setFilters] = useState<ExpenseFiltersType>({})
-  const [searchTerm, setSearchTerm] = useState("")
-  const [expenses, setExpenses] = useState<Expense[]>([])
-  const [loading, setLoading] = useState(true)
-  const [page, setPage] = useState(1)
   const { toast } = useToast()
+  const [pageSize, setPageSize] = useState(25)
+  const [currentSort, setCurrentSort] = useState({ field: 'expense_date', order: 'desc' as 'asc' | 'desc' })
+  const [filters, setFilters] = useState<ExpenseFilters>({})
 
-  const fetchExpenses = async () => {
+  // Table columns management
+  const { columns, visibleColumns, toggleColumn, resetColumns } = useTableColumns()
+
+  // Expenses data fetching
+  const {
+    expenses,
+    total,
+    pages,
+    currentPage,
+    isLoading,
+    error,
+    refetch,
+    setPage,
+    setFilters: updateFilters,
+    setSort
+  } = useExpenses({
+    page: 1,
+    limit: pageSize,
+    filters,
+    sortBy: currentSort.field,
+    sortOrder: currentSort.order
+  })
+
+  // Check if any filters are active
+  const hasActiveFilters = Boolean(
+    filters.search || 
+    filters.expense_type || 
+    filters.payment_status ||
+    filters.payment_method ||
+    filters.min_amount ||
+    filters.max_amount
+  )
+
+  // Handle filter changes
+  const handleFiltersChange = useCallback((newFilters: ExpenseFilters) => {
+    setFilters(newFilters)
+    updateFilters(newFilters)
+  }, [updateFilters])
+
+  // Handle clear filters
+  const handleClearFilters = useCallback(() => {
+    const emptyFilters: ExpenseFilters = {}
+    setFilters(emptyFilters)
+    updateFilters(emptyFilters)
+  }, [updateFilters])
+
+  // Handle sorting
+  const handleSort = useCallback((columnKey: keyof Expense) => {
+    const newOrder = currentSort.field === columnKey && currentSort.order === 'asc' ? 'desc' : 'asc'
+    setCurrentSort({ field: columnKey, order: newOrder })
+    setSort(columnKey, newOrder)
+  }, [currentSort, setSort])
+
+  // Handle page size change
+  const handlePageSizeChange = useCallback((newPageSize: number) => {
+    setPageSize(newPageSize)
+    setPage(1) // Reset to first page when changing page size
+  }, [setPage])
+
+  // Handle expense actions
+  const handleAddExpense = useCallback(async (expenseData: CreateExpensePayload) => {
     try {
-      setLoading(true)
-      const response = await getExpenses(page, 10, {
-        ...filters,
-        search: searchTerm
-      })
-      setExpenses(response.expenses)
-    } catch (error) {
-      console.error("Failed to fetch expenses:", error)
+      await createExpense(expenseData)
       toast({
-        title: "Error",
-        description: "Failed to fetch expenses. Please try again.",
-        variant: "destructive"
+        title: "Expense Added",
+        description: `${expenseData.description} has been added successfully.`,
       })
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    fetchExpenses()
-  }, [page, filters, searchTerm])
-
-  const handleAddExpense = async (data: any) => {
-    try {
-      await createExpense(data)
-      toast({
-        title: "Success",
-        description: "Expense added successfully",
-      })
-      fetchExpenses()
-    } catch (error) {
-      console.error("Failed to add expense:", error)
+      refetch()
+    } catch {
       toast({
         title: "Error",
         description: "Failed to add expense. Please try again.",
-        variant: "destructive"
+        variant: "destructive",
       })
     }
-  }
+  }, [toast, refetch])
 
-  const handleTogglePaid = async (id: string, isPaid: boolean) => {
+  const handleViewExpense = useCallback((expense: Expense) => {
+    // TODO: Implement view expense modal/page
+    toast({
+      title: "View Expense",
+      description: `Viewing expense: ${expense.description}`,
+    })
+  }, [toast])
+
+  const handleEditExpense = useCallback((expense: Expense) => {
+    // TODO: Implement edit expense modal/page
+    toast({
+      title: "Edit Expense",
+      description: `Editing expense: ${expense.description}`,
+    })
+  }, [toast])
+
+  const handleDeleteExpense = useCallback(async (expense: Expense) => {
     try {
-      if (isPaid) {
-        await updateExpense(id as any, { payment_status: PaymentStatus.PENDING })
-      } else {
-        await markExpensePaid(id as any)
-      }
+      await deleteExpense(expense.id)
       toast({
-        title: "Success",
-        description: `Expense marked as ${isPaid ? "unpaid" : "paid"}`,
+        title: "Expense Deleted",
+        description: `${expense.description} has been deleted successfully.`,
       })
-      fetchExpenses()
-    } catch (error) {
-      console.error("Failed to update expense:", error)
+      refetch()
+    } catch (err) {
       toast({
         title: "Error",
-        description: "Failed to update expense. Please try again.",
-        variant: "destructive"
+        description: "Failed to delete expense. Please try again.",
+        variant: "destructive",
       })
     }
-  }
+  }, [toast, refetch])
 
-  const handleDeleteExpense = async (id: string) => {
-    if (confirm("Are you sure you want to delete this expense?")) {
-      try {
-        await deleteExpense(id as any)
-        toast({
-          title: "Success",
-          description: "Expense deleted successfully",
-        })
-        fetchExpenses()
-      } catch (error) {
-        console.error("Failed to delete expense:", error)
-        toast({
-          title: "Error",
-          description: "Failed to delete expense. Please try again.",
-          variant: "destructive"
-        })
-      }
-    }
-  }
-
-  const handleEditExpense = (expense: Expense) => {
-    // TODO: Implement edit functionality
-    console.log("Edit expense:", expense)
+  // Show error state
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-2xl font-light">Expenses</h1>
+            <p className="text-muted-foreground text-sm">Manage your expenses</p>
+          </div>
+          <AddExpenseDialog onAddExpense={handleAddExpense} />
+        </div>
+        <div className="text-center py-12">
+          <div className="space-y-4">
+            <div className="text-lg font-light text-muted-foreground">Failed to load expenses</div>
+            <p className="text-sm text-muted-foreground">{error}</p>
+            <Button variant="outline" onClick={refetch}>
+              Try Again
+            </Button>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -117,20 +163,43 @@ export default function ExpensesPage() {
         <AddExpenseDialog onAddExpense={handleAddExpense} />
       </div>
 
-      <ExpenseFilters
+      {/* Toolbar */}
+      <ExpensesToolbar
         filters={filters}
-        onFiltersChange={setFilters}
-        searchTerm={searchTerm}
-        onSearchChange={setSearchTerm}
+        onFiltersChange={handleFiltersChange}
+        onClearFilters={handleClearFilters}
+        columns={columns}
+        onColumnToggle={toggleColumn}
+        onColumnReset={resetColumns}
+        totalExpenses={total}
+        hasActiveFilters={hasActiveFilters}
       />
 
-      <ExpenseList
+      {/* Table */}
+      <ExpensesTable
         expenses={expenses}
-        loading={loading}
-        onTogglePaid={handleTogglePaid}
-        onDelete={handleDeleteExpense}
+        columns={visibleColumns}
+        loading={isLoading}
+        sortBy={currentSort.field}
+        sortOrder={currentSort.order}
+        onSort={handleSort}
+        onView={handleViewExpense}
         onEdit={handleEditExpense}
+        onDelete={handleDeleteExpense}
       />
+
+      {/* Pagination */}
+      {total > 0 && (
+        <ExpensesPagination
+          currentPage={currentPage}
+          totalPages={pages}
+          totalItems={total}
+          pageSize={pageSize}
+          onPageChange={setPage}
+          onPageSizeChange={handlePageSizeChange}
+          loading={isLoading}
+        />
+      )}
     </div>
   )
 }
