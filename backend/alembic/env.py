@@ -10,8 +10,8 @@ from alembic import context
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Import our models and settings
-from src.config import settings
-from src.database import Base
+from src.core.config import settings
+from src.core.database import Base, sync_engine
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -54,11 +54,8 @@ def run_migrations_online() -> None:
     In this scenario we need to create an Engine
     and associate a connection with the context.
     """
-    connectable = engine_from_config(
-        config.get_section(config.config_ini_section, {}),
-        prefix="sqlalchemy.",
-        poolclass=pool.NullPool,
-    )
+    # Use the sync engine from database.py
+    connectable = sync_engine
 
     with connectable.connect() as connection:
         context.configure(connection=connection, target_metadata=target_metadata)

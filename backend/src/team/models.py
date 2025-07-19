@@ -3,7 +3,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from datetime import datetime
 
-from src.database import Base
+from ..core.database import Base
 
 class TeamMember(Base):
     __tablename__ = "team_members"

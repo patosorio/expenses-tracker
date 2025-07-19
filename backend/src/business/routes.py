@@ -1,17 +1,17 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 
-from src.business.models import BusinessSettings, TaxConfiguration
-from src.business.schemas import (
+from .models import BusinessSettings, TaxConfiguration
+from .schemas import (
     BusinessSettingsResponse, BusinessSettingsUpdate,
     TaxConfigurationResponse, TaxConfigurationCreate, TaxConfigurationUpdate
 )
-from src.business.service import BusinessService
-from src.auth.dependencies import get_current_user
-from src.users.models import User
-from src.database import get_db
-from src.exceptions import BusinessSettingsNotFoundError, TaxConfigurationNotFoundError
+from .service import BusinessService
+from ..auth.dependencies import get_current_user
+from ..users.models import User
+from ..core.database import get_db
+from .exceptions import BusinessSettingsNotFoundError, TaxConfigurationNotFoundError
 
 router = APIRouter()
 
@@ -19,7 +19,7 @@ router = APIRouter()
 @router.get("/settings", response_model=BusinessSettingsResponse)
 async def get_business_settings(
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     """Get business settings"""
     try:
@@ -36,7 +36,7 @@ async def get_business_settings(
 async def update_business_settings(
     settings_data: BusinessSettingsUpdate,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     """Update business settings"""
     try:
@@ -56,7 +56,7 @@ async def update_business_settings(
 async def get_tax_configurations(
     active_only: bool = True,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     """Get tax configurations"""
     try:
@@ -75,7 +75,7 @@ async def get_tax_configurations(
 async def get_tax_configuration(
     tax_id: str,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     """Get specific tax configuration"""
     try:
@@ -97,7 +97,7 @@ async def get_tax_configuration(
 async def create_tax_configuration(
     tax_data: TaxConfigurationCreate,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     """Create tax configuration"""
     try:
@@ -117,7 +117,7 @@ async def update_tax_configuration(
     tax_id: str,
     tax_data: TaxConfigurationUpdate,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     """Update tax configuration"""
     try:
@@ -141,7 +141,7 @@ async def update_tax_configuration(
 async def delete_tax_configuration(
     tax_id: str,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     """Delete tax configuration (soft delete)"""
     try:

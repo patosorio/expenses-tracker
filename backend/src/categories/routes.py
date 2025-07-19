@@ -1,21 +1,21 @@
 from fastapi import APIRouter, Depends, Query, HTTPException, status
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional, List
 from uuid import UUID
 import math
 
-from src.categories.models import Category, CategoryType
-from src.categories.schemas import (
+from .models import Category, CategoryType
+from .schemas import (
     CategoryCreate, CategoryUpdate, CategoryResponse, CategoryHierarchy,
     CategoryPath, CategoryListResponse, CategoryStatsResponse,
     CategoryWithChildren
 )
-from src.categories.service import CategoryService
-from src.auth.dependencies import get_current_user
-from src.database import get_db
-from src.users.models import User
-from src.exceptions import (
-    CategoryNotFoundError, DuplicateCategoryError, InvalidCategoryParentError,
+from .service import CategoryService
+from ..auth.dependencies import get_current_user
+from ..core.database import get_db
+from ..users.models import User
+from .exceptions import (
+    CategoryNotFoundError, CategoryAlreadyExistsError, InvalidCategoryParentError,
     CategoryTypeConflictError, CircularCategoryReferenceError
 )
 
@@ -26,7 +26,7 @@ router = APIRouter()
 async def create_category(
     category_data: CategoryCreate,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     """Create a new category"""
     try:
@@ -38,7 +38,7 @@ async def create_category(
         response.level = category.get_level()
         return response
         
-    except (DuplicateCategoryError, InvalidCategoryParentError, CategoryTypeConflictError) as e:
+    except (CategoryAlreadyExistsError, InvalidCategoryParentError, CategoryTypeConflictError) as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
@@ -59,7 +59,7 @@ async def get_categories(
     search: Optional[str] = Query(None, description="Search categories by name"),
     include_inactive: bool = Query(False, description="Include inactive categories"),
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     """Get categories with filtering and pagination"""
     try:
@@ -101,7 +101,7 @@ async def get_category_hierarchy(
     type: Optional[CategoryType] = Query(None, description="Filter by category type"),
     include_inactive: bool = Query(False, description="Include inactive categories"),
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     """Get hierarchical tree structure of categories"""
     try:
@@ -124,7 +124,7 @@ async def get_category_hierarchy(
 async def get_category(
     category_id: UUID,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     """Get a single category by ID"""
     try:
@@ -155,7 +155,7 @@ async def update_category(
     category_id: UUID,
     category_data: CategoryUpdate,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     """Update a category"""
     try:
@@ -176,7 +176,7 @@ async def update_category(
             detail="Category not found"
         )
     except (
-        DuplicateCategoryError, 
+        CategoryAlreadyExistsError, 
         InvalidCategoryParentError, 
         CategoryTypeConflictError,
         CircularCategoryReferenceError
@@ -197,7 +197,7 @@ async def delete_category(
     category_id: UUID,
     cascade: bool = Query(False, description="Cascade delete to children"),
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     """Soft delete a category"""
     try:
@@ -231,7 +231,7 @@ async def delete_category(
 async def get_category_path(
     category_id: UUID,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     """Get category breadcrumb path from root to category"""
     try:
@@ -256,7 +256,7 @@ async def get_category_children(
     category_id: UUID,
     include_inactive: bool = Query(False, description="Include inactive categories"),
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     """Get direct children of a category"""
     try:
@@ -297,7 +297,7 @@ async def get_category_children(
 @router.get("/stats/overview", response_model=CategoryStatsResponse)
 async def get_category_stats(
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     """Get category statistics for the user"""
     try:

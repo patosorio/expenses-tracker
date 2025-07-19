@@ -6,7 +6,7 @@ from sqlalchemy.sql import text
 from datetime import datetime
 from enum import Enum as PyEnum
 
-from src.database import Base
+from ..core.database import Base
 
 
 class CategoryType(str, PyEnum):

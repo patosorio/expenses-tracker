@@ -2,7 +2,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { SettingsTab } from "@/lib/types/settings"
+import { SettingsTab } from "@/types/settings"
 import { 
   User, 
   Building2, 

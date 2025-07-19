@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useSearchParams } from "next/navigation"
-import { SettingsTab } from "@/lib/types/settings"
+import { SettingsTab } from "@/types/settings"
 import { SettingsTabs } from "./SettingsTabs"
 
 interface SettingsLayoutProps {

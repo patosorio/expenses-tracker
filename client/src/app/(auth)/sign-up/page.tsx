@@ -11,8 +11,8 @@ import { FloatingInput } from '@/components/layout/floating-input';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { checkPasswordStrength } from '@/lib/utils/password';
-import { createUser } from '@/lib/api/users';
-import { verifyToken } from '@/lib/api/auth';
+import { createUser } from '@/api/users';
+import { verifyToken } from '@/api/auth';
 
 export default function SignUp() {
   const router = useRouter();

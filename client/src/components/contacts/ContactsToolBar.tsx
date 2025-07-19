@@ -10,8 +10,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { ContactFilters, ContactType, TableColumn } from '@/lib/types/contacts'
-import { Contact } from '@/lib/types/contacts'
+import { ContactFilters, ContactType, TableColumn } from '@/types/contacts'
+import { Contact } from '@/types/contacts'
 import { ColumnSelector } from './ColumnSelector'
 
 interface ContactsToolbarProps {

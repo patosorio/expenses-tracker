@@ -1,10 +1,10 @@
 from fastapi import APIRouter, Depends, Query, HTTPException, status
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional
 import math
 
-from src.users.models import User, UserRole, UserStatus
-from src.users.schemas import (
+from .models import User, UserRole, UserStatus
+from .schemas import (
     UserResponse,
     UserUpdate,
     UserListResponse,
@@ -17,17 +17,17 @@ from src.users.schemas import (
     NotificationSettings,
     UserPreferences
 )
-from src.users.service import UserService
-from src.auth.dependencies import get_current_user
-from src.database import get_db
-from src.exceptions import DuplicateEmailError
+from .service import UserService
+from ..auth.dependencies import get_current_user
+from ..core.database import get_db
+from .exceptions import DuplicateEmailError
 
 router = APIRouter()
 
 @router.post("/", response_model=UserResponse)
 async def create_user(
     user_data: UserCreate,
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     """Create a new user"""
     try:
@@ -57,7 +57,7 @@ async def get_current_user_profile(
 async def update_current_user_profile(
     user_update: UserUpdate,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     """Update current user profile"""
     try:
@@ -78,7 +78,7 @@ async def get_users(
     status: Optional[UserStatus] = Query(None),
     search: Optional[str] = Query(None),
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     """Get users with filtering and pagination (Admin only)"""
     if current_user.role not in [UserRole.ADMIN, UserRole.MANAGER]:
@@ -108,7 +108,7 @@ async def get_users(
 async def get_user(
     user_id: str,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     """Get user by ID (Admin/Manager only or own profile)"""
     if current_user.id != user_id and current_user.role not in [UserRole.ADMIN, UserRole.MANAGER]:
@@ -132,7 +132,7 @@ async def update_user(
     user_id: str,
     user_update: UserUpdate,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     """Update user (Admin only or own profile)"""
     if current_user.id != user_id and current_user.role != UserRole.ADMIN:
@@ -155,7 +155,7 @@ async def update_user(
 async def deactivate_user(
     user_id: str,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     """Deactivate user (Admin only)"""
     if current_user.role != UserRole.ADMIN:
@@ -177,7 +177,7 @@ async def deactivate_user(
 @router.get("/stats/overview", response_model=UserStatsResponse)
 async def get_user_stats(
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     """Get user statistics (Admin/Manager only)"""
     if current_user.role not in [UserRole.ADMIN, UserRole.MANAGER]:
@@ -195,7 +195,7 @@ async def get_user_stats(
 @router.get("/me/settings", response_model=UserSettingsResponse)
 async def get_user_settings(
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     """Get current user's settings and preferences"""
     try:
@@ -212,7 +212,7 @@ async def get_user_settings(
 async def update_user_settings(
     settings_data: UserSettingsUpdate,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     """Update user settings and preferences"""
     try:
@@ -229,7 +229,7 @@ async def update_user_settings(
 async def update_notification_settings(
     notification_data: NotificationSettingsUpdate,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     """Update notification preferences only"""
     try:
@@ -246,7 +246,7 @@ async def update_notification_settings(
 async def update_user_preferences(
     preferences_data: UserPreferencesUpdate,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     """Update user preferences only (non-notification settings)"""
     try:
@@ -262,7 +262,7 @@ async def update_user_preferences(
 @router.post("/me/settings/reset", response_model=UserSettingsResponse)
 async def reset_user_settings(
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     """Reset user settings to default values"""
     try:
@@ -278,7 +278,7 @@ async def reset_user_settings(
 @router.get("/me/preferences", response_model=UserPreferences)
 async def get_user_preferences(
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     """Get only user preferences (for quick access)"""
     try:
@@ -304,7 +304,7 @@ async def get_user_preferences(
 @router.get("/me/notifications", response_model=NotificationSettings)
 async def get_notification_settings(
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     """Get only notification settings (for quick access)"""
     try:

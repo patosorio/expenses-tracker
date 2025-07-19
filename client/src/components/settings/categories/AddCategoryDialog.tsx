@@ -5,8 +5,8 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { LucideIconPicker } from "@/components/ui/LucideIconPicker"
-import { CategoryFormData, Category } from "@/lib/types/settings"
-import { settingsApi } from "@/lib/api/settings"
+import { CategoryFormData, Category } from "@/types/settings"
+import { settingsApi } from "@/api/settings"
 import { Plus } from 'lucide-react'
 
 interface AddCategoryDialogProps {

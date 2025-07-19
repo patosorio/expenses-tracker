@@ -4,7 +4,7 @@ from sqlalchemy.sql import func
 from datetime import datetime
 from enum import Enum as PyEnum
 
-from src.database import Base
+from ..core.database import Base
 
 class UserRole(str, PyEnum):
     ADMIN = "admin"

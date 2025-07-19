@@ -1,5 +1,5 @@
-from pydantic import BaseModel, EmailStr, Field
-from typing import Optional, Dict, Any, Literal
+from pydantic import BaseModel, EmailStr, Field, ConfigDict
+from typing import Optional, Dict, Any, Literal, List
 from datetime import datetime
 
 class TeamMemberBase(BaseModel):
@@ -8,6 +8,10 @@ class TeamMemberBase(BaseModel):
     department: Optional[str] = Field(None, max_length=100)
     job_title: Optional[str] = Field(None, max_length=100)
     permissions: Optional[Dict[str, Any]] = None
+
+class TeamMemberCreate(TeamMemberBase):
+    """Schema for creating a team member"""
+    pass
 
 class TeamMemberInvite(TeamMemberBase):
     """Schema for inviting a team member"""
@@ -31,8 +35,7 @@ class TeamMemberResponse(TeamMemberBase):
     last_active: Optional[datetime] = None
     deactivated_at: Optional[datetime] = None
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class TeamInvitationBase(BaseModel):
     sent_at: datetime
@@ -43,8 +46,7 @@ class TeamInvitationResponse(TeamInvitationBase):
     id: str
     team_member_id: str
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class TeamInvitationAccept(BaseModel):
     """Schema for accepting a team invitation"""
@@ -56,4 +58,12 @@ class TeamStats(BaseModel):
     active_members: int
     pending_invitations: int
     members_by_role: Dict[str, int]
-    members_by_department: Dict[str, int] 
+    members_by_department: Dict[str, int]
+
+class TeamMemberListResponse(BaseModel):
+    """Schema for team member list response"""
+    team_members: List[TeamMemberResponse]
+    total: int
+    page: int
+    per_page: int
+    pages: int 

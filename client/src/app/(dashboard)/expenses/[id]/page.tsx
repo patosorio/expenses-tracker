@@ -8,8 +8,8 @@ import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
 import { format } from "date-fns"
 import { AlertCircle, ArrowLeft, Calendar, CreditCard, FileText, Receipt, Tag, User } from "lucide-react"
-import { Expense, PaymentStatus } from "@/lib/types/expenses"
-import { getExpenseById } from "@/lib/api/expenses"
+import { Expense, PaymentStatus } from "@/types/expenses"
+import { getExpenseById } from "@/api/expenses"
 import { UUID } from "crypto"
 
 function formatCurrency(amount: number, currency: string) {

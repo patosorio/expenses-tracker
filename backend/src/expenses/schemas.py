@@ -1,56 +1,20 @@
 from datetime import datetime
-from typing import Optional, List, Dict, Any, Union, TYPE_CHECKING
+from typing import Optional, List, Dict, Any, Union, TYPE_CHECKING, Annotated
 from uuid import UUID
 from decimal import Decimal
 
 from pydantic import BaseModel, field_validator, computed_field, ConfigDict
 
-from src.expenses.models import ExpenseType, PaymentMethod, PaymentStatus, AnalysisStatus
-
-if TYPE_CHECKING:
-    from src.contacts.schemas import ContactResponse
+from .models import ExpenseType, PaymentMethod, PaymentStatus, AnalysisStatus
 
 
 # Base Schemas
-class TaxConfigBase(BaseModel):
-    tax_name: str
-    tax_rate: Decimal
-    tax_code: Optional[str] = None
-    is_default: bool = False
-    country_code: Optional[str] = None
-
-    @field_validator('tax_name')
-    @classmethod
-    def validate_tax_name(cls, v: str) -> str:
-        if not v or not v.strip():
-            raise ValueError('Tax name cannot be empty')
-        if len(v.strip()) > 100:
-            raise ValueError('Tax name must be 100 characters or less')
-        return v.strip()
-
-    @field_validator('tax_rate')
-    @classmethod
-    def validate_tax_rate(cls, v: Decimal) -> Decimal:
-        if v < 0 or v > 100:
-            raise ValueError('Tax rate must be between 0 and 100')
-        return v
-
-    @field_validator('country_code')
-    @classmethod
-    def validate_country_code(cls, v: Optional[str]) -> Optional[str]:
-        if v is None:
-            return v
-        if len(v) != 2:
-            raise ValueError('Country code must be 2 characters (ISO 3166-1 alpha-2)')
-        return v.upper()
-
-
 class ExpenseBase(BaseModel):
     description: str
     expense_date: datetime
     notes: Optional[str] = None
     receipt_url: Optional[str] = None
-    expense_type: ExpenseType = ExpenseType.simple
+    expense_type: ExpenseType = ExpenseType.SIMPLE
     category_id: UUID
     payment_method: Optional[PaymentMethod] = None
     payment_status: PaymentStatus = PaymentStatus.PENDING
@@ -144,44 +108,11 @@ class DocumentAnalysisBase(BaseModel):
 
 
 # Request Schemas
-class TaxConfigCreate(TaxConfigBase):
-    """Schema for creating tax configuration"""
-    pass
-
-
-class TaxConfigUpdate(BaseModel):
-    """Schema for updating tax configuration"""
-    tax_name: Optional[str] = None
-    tax_rate: Optional[Decimal] = None
-    tax_code: Optional[str] = None
-    is_default: Optional[bool] = None
-    country_code: Optional[str] = None
-
-    @field_validator('tax_name')
-    @classmethod
-    def validate_tax_name(cls, v: Optional[str]) -> Optional[str]:
-        if v is None:
-            return v
-        if not v or not v.strip():
-            raise ValueError('Tax name cannot be empty')
-        if len(v.strip()) > 100:
-            raise ValueError('Tax name must be 100 characters or less')
-        return v.strip()
-
-    @field_validator('tax_rate')
-    @classmethod
-    def validate_tax_rate(cls, v: Optional[Decimal]) -> Optional[Decimal]:
-        if v is None:
-            return v
-        if v < 0 or v > 100:
-            raise ValueError('Tax rate must be between 0 and 100')
-        return v
-
-
 class SimpleExpenseCreate(BaseModel):
     """Schema for creating simple (receipt) expenses"""
     description: str
     expense_date: datetime
+    expense_type: ExpenseType = ExpenseType.SIMPLE
     notes: Optional[str] = None
     receipt_url: Optional[str] = None
     category_id: UUID
@@ -210,6 +141,7 @@ class InvoiceExpenseCreate(BaseModel):
     """Schema for creating invoice expenses with tax calculations"""
     description: str
     expense_date: datetime
+    expense_type: ExpenseType = ExpenseType.INVOICE
     notes: Optional[str] = None
     receipt_url: Optional[str] = None
     category_id: UUID
@@ -264,6 +196,8 @@ class ExpenseUpdate(BaseModel):
             return v
         if not v or not v.strip():
             raise ValueError('Description cannot be empty')
+        if len(v.strip()) > 500:
+            raise ValueError('Description must be 500 characters or less')
         return v.strip()
 
     @field_validator('base_amount')
@@ -277,25 +211,13 @@ class ExpenseUpdate(BaseModel):
 
 
 class AttachmentCreate(AttachmentBase):
-    """Schema for creating expense attachments"""
+    """Schema for creating attachments"""
     pass
 
 
 class DocumentAnalysisCreate(DocumentAnalysisBase):
     """Schema for creating document analysis"""
     pass
-
-
-# Response Schemas
-class TaxConfigResponse(TaxConfigBase):
-    """Schema for tax configuration responses"""
-    id: UUID
-    user_id: str
-    created_at: datetime
-    updated_at: Optional[datetime] = None
-    is_active: bool
-
-    model_config = ConfigDict(from_attributes=True)
 
 
 class AttachmentResponse(AttachmentBase):
@@ -331,10 +253,42 @@ class ExpenseResponse(ExpenseBase):
     updated_at: Optional[datetime] = None
     is_active: bool
     
-    # Related objects
-    contact: Optional["ContactResponse"] = None
-    attachments: List[AttachmentResponse] = []
+    # Related objects - made optional to avoid async loading issues
+    contact: Optional[Dict[str, Any]] = None  # Using Dict instead of ContactResponse to avoid circular import
+    attachments: Optional[List[AttachmentResponse]] = None
     document_analysis: Optional[DocumentAnalysisResponse] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ExpenseCreateResponse(BaseModel):
+    """Simplified expense response for creation endpoints"""
+    id: UUID
+    description: str
+    expense_date: datetime
+    expense_type: ExpenseType
+    notes: Optional[str] = None
+    receipt_url: Optional[str] = None
+    category_id: UUID
+    payment_method: Optional[PaymentMethod] = None
+    payment_status: PaymentStatus
+    payment_date: Optional[datetime] = None
+    invoice_number: Optional[str] = None
+    contact_id: Optional[UUID] = None
+    payment_due_date: Optional[datetime] = None
+    base_amount: Decimal
+    tax_amount: Decimal
+    total_amount: Decimal
+    currency: str
+    tax_config_id: Optional[UUID] = None
+    tags: Optional[List[str]] = None
+    custom_fields: Optional[Dict[str, Any]] = None
+    user_id: str
+    is_overdue: bool
+    days_overdue: int
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+    is_active: bool
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -374,7 +328,6 @@ class ExpensePreviewResponse(BaseModel):
     confidence_score: Decimal
 
 
-# Specialized Schemas
 class ExpenseFilter(BaseModel):
     """Advanced filtering options for expenses"""
     expense_type: Optional[ExpenseType] = None

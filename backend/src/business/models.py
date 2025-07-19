@@ -4,7 +4,7 @@ from sqlalchemy.sql import func, text
 from sqlalchemy.dialects.postgresql import UUID as PostgresUUID
 from datetime import datetime
 
-from src.database import Base
+from ..core.database import Base
 
 class BusinessSettings(Base):
     __tablename__ = "business_settings"
