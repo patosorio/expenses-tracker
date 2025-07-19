@@ -5,7 +5,7 @@ from sqlalchemy.dialects.postgresql import UUID as PostgresUUID
 from sqlalchemy.sql import text
 from enum import Enum as PyEnum
 
-from src.database import Base
+from ..core.database import Base
 
 
 class ContactType(str, PyEnum):

@@ -4,7 +4,7 @@ import type React from "react"
 
 import { useState } from "react"
 import Link from "next/link"
-import { resetPassword } from "@/lib/api/auth"
+import { resetPassword } from "@/api/auth"
 import { FloatingInput } from "@/components/layout/floating-input"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"

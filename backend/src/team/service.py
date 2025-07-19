@@ -1,20 +1,25 @@
-from sqlalchemy.orm import Session
-from sqlalchemy import and_, or_, func
+from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional, List
 import uuid
 import secrets
 from datetime import datetime, timedelta
+import logging
 
-from src.team.models import TeamMember, TeamInvitation
-from src.team.schemas import TeamMemberInvite, TeamMemberUpdate, TeamStats
-from src.exceptions import (
+from .models import TeamMember, TeamInvitation
+from .repository import TeamRepository
+from .schemas import TeamMemberInvite, TeamMemberUpdate, TeamStats
+from .exceptions import (
     TeamMemberNotFoundError, TeamInvitationNotFoundError, 
-    TeamInvitationExpiredError, DuplicateTeamMemberError
+    TeamInvitationExpiredError, DuplicateTeamMemberError,
+    TeamValidationError, TeamInvitationError
 )
 
+logger = logging.getLogger(__name__)
+
 class TeamService:
-    def __init__(self, db: Session):
+    def __init__(self, db: AsyncSession):
         self.db = db
+        self.team_repo = TeamRepository(self.db)
     
     async def get_team_members(
         self,
@@ -24,20 +29,8 @@ class TeamService:
         department_filter: Optional[str] = None
     ) -> List[TeamMember]:
         """Get team members for organization"""
-        query = self.db.query(TeamMember).filter(
-            TeamMember.organization_owner_id == owner_id
-        )
-        
-        if status_filter:
-            query = query.filter(TeamMember.status == status_filter)
-        
-        if role_filter:
-            query = query.filter(TeamMember.role == role_filter)
-        
-        if department_filter:
-            query = query.filter(TeamMember.department == department_filter)
-        
-        return query.order_by(TeamMember.invited_at.desc()).all()
+        # Delegate to repository for data access
+        return await self.team_repo.get_team_members(owner_id, status_filter, role_filter, department_filter)
     
     async def get_team_member(
         self,
@@ -45,12 +38,7 @@ class TeamService:
         owner_id: str
     ) -> TeamMember:
         """Get specific team member"""
-        member = self.db.query(TeamMember).filter(
-            and_(
-                TeamMember.id == member_id,
-                TeamMember.organization_owner_id == owner_id
-            )
-        ).first()
+        member = await self.team_repo.get_team_member_by_id(member_id, owner_id)
         
         if not member:
             raise TeamMemberNotFoundError("Team member not found")
@@ -64,13 +52,8 @@ class TeamService:
     ) -> TeamMember:
         """Invite new team member"""
         
-        # Check if already invited or active
-        existing = self.db.query(TeamMember).filter(
-            and_(
-                TeamMember.organization_owner_id == owner_id,
-                TeamMember.email == invitation_data.email
-            )
-        ).first()
+        # Business logic: Check if already invited or active
+        existing = await self.team_repo.get_team_member_by_email(invitation_data.email, owner_id)
         
         if existing and existing.status == "active":
             raise DuplicateTeamMemberError("User is already a team member")
@@ -78,10 +61,10 @@ class TeamService:
         if existing and existing.status == "pending":
             raise DuplicateTeamMemberError("Invitation already sent to this email")
         
-        # Generate invitation token
+        # Business logic: Generate invitation token
         invitation_token = secrets.token_urlsafe(32)
         
-        # Create team member record
+        # Business logic: Create team member record
         team_member = TeamMember(
             id=str(uuid.uuid4()),
             organization_owner_id=owner_id,
@@ -94,18 +77,17 @@ class TeamService:
             status="pending"
         )
         
-        self.db.add(team_member)
+        # Delegate to repository for data access
+        team_member = await self.team_repo.create_team_member(team_member)
         
-        # Create invitation record
+        # Business logic: Create invitation record
         invitation = TeamInvitation(
             id=str(uuid.uuid4()),
             team_member_id=team_member.id,
             expires_at=datetime.utcnow() + timedelta(days=7)
         )
         
-        self.db.add(invitation)
-        self.db.commit()
-        self.db.refresh(team_member)
+        await self.team_repo.create_invitation(invitation)
         
         # TODO: Send invitation email
         await self._send_invitation_email(team_member, invitation_token)
@@ -125,16 +107,12 @@ class TeamService:
         for field, value in update_data.model_dump(exclude_unset=True).items():
             setattr(member, field, value)
         
-        self.db.commit()
-        self.db.refresh(member)
-        
-        return member
+        # Delegate to repository for data access
+        return await self.team_repo.update_team_member(member)
     
     async def accept_invitation(self, token: str, user_id: str) -> TeamMember:
         """Accept team invitation"""
-        team_member = self.db.query(TeamMember).filter(
-            TeamMember.invitation_token == token
-        ).first()
+        team_member = await self.team_repo.get_invitation_by_token(token)
         
         if not team_member:
             raise TeamInvitationNotFoundError("Invalid invitation token")
@@ -142,15 +120,13 @@ class TeamService:
         if team_member.status != "pending":
             raise TeamInvitationExpiredError("Invitation already processed")
         
-        # Check if invitation expired
-        invitation = self.db.query(TeamInvitation).filter(
-            TeamInvitation.team_member_id == team_member.id
-        ).first()
+        # Business logic: Check if invitation expired
+        invitation = await self.team_repo.get_invitation_record(team_member.id)
         
         if invitation and invitation.expires_at < datetime.utcnow():
             raise TeamInvitationExpiredError("Invitation has expired")
         
-        # Accept invitation
+        # Business logic: Accept invitation
         team_member.user_id = user_id
         team_member.status = "active"
         team_member.accepted_at = datetime.utcnow()
@@ -158,11 +134,10 @@ class TeamService:
         
         if invitation:
             invitation.accepted_at = datetime.utcnow()
+            await self.team_repo.update_invitation(invitation)
         
-        self.db.commit()
-        self.db.refresh(team_member)
-        
-        return team_member
+        # Delegate to repository for data access
+        return await self.team_repo.update_team_member(team_member)
     
     async def remove_team_member(
         self,
@@ -172,61 +147,15 @@ class TeamService:
         """Remove team member (soft delete)"""
         member = await self.get_team_member(member_id, owner_id)
         
-        member.status = "inactive"
-        member.deactivated_at = datetime.utcnow()
-        
-        self.db.commit()
-        return True
+        # Delegate to repository for data access
+        return await self.team_repo.delete_team_member(member)
     
     async def get_team_stats(self, owner_id: str) -> TeamStats:
         """Get team statistics"""
-        # Basic counts
-        total_members = self.db.query(TeamMember).filter(
-            TeamMember.organization_owner_id == owner_id
-        ).count()
+        # Delegate to repository for data access
+        stats_data = await self.team_repo.get_team_stats(owner_id)
         
-        active_members = self.db.query(TeamMember).filter(
-            and_(
-                TeamMember.organization_owner_id == owner_id,
-                TeamMember.status == "active"
-            )
-        ).count()
-        
-        pending_invitations = self.db.query(TeamMember).filter(
-            and_(
-                TeamMember.organization_owner_id == owner_id,
-                TeamMember.status == "pending"
-            )
-        ).count()
-        
-        # Members by role
-        role_counts = dict(
-            self.db.query(TeamMember.role, func.count(TeamMember.id))
-            .filter(TeamMember.organization_owner_id == owner_id)
-            .group_by(TeamMember.role)
-            .all()
-        )
-        
-        # Members by department
-        department_counts = dict(
-            self.db.query(TeamMember.department, func.count(TeamMember.id))
-            .filter(
-                and_(
-                    TeamMember.organization_owner_id == owner_id,
-                    TeamMember.department.isnot(None)
-                )
-            )
-            .group_by(TeamMember.department)
-            .all()
-        )
-        
-        return TeamStats(
-            total_members=total_members,
-            active_members=active_members,
-            pending_invitations=pending_invitations,
-            members_by_role=role_counts,
-            members_by_department=department_counts
-        )
+        return TeamStats(**stats_data)
     
     async def _send_invitation_email(self, team_member: TeamMember, token: str):
         """Send invitation email (placeholder for email service)"""

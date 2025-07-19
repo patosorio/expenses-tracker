@@ -10,10 +10,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Expense } from '@/lib/types/expenses'
-import { TableColumn } from '@/lib/hooks/expenses/use-table-columns'
+import { Expense } from '@/types/expenses'
+import { TableColumn } from '@/hooks/expenses/use-table-columns'
 import { ExpenseStatusBadge } from '@/components/expenses/ExpenseStatusBadge'
-import { getColumnDisplayValue } from '@/lib/hooks/expenses/use-table-columns'
+import { getColumnDisplayValue } from '@/hooks/expenses/use-table-columns'
 
 interface ExpensesTableProps {
   expenses: Expense[]

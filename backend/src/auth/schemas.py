@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from src.users.schemas import UserResponse
+from ..users.schemas import UserResponse
 
 class TokenResponse(BaseModel):
     """Schema for token response"""

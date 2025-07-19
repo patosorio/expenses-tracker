@@ -1,5 +1,5 @@
 import { Badge } from '@/components/ui/badge'
-import { PaymentStatus } from '@/lib/types/expenses'
+import { PaymentStatus } from '@/types/expenses'
 
 interface ExpenseStatusBadgeProps {
   status: PaymentStatus

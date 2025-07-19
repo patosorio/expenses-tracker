@@ -1,55 +1,69 @@
-from typing import List, Optional
+from typing import List, Optional, Tuple
 from uuid import UUID
-from sqlalchemy.orm import Session
-from sqlalchemy import and_, or_, func
+from sqlalchemy.ext.asyncio import AsyncSession
+import logging
 
 from .models import Contact, ContactType
+from .repository import ContactRepository
 from .schemas import ContactCreate, ContactUpdate, ContactResponse
-from src.exceptions import ContactNotFoundError, ContactAlreadyExistsError
+from .exceptions import (
+    ContactNotFoundError, ContactValidationError, ContactAlreadyExistsError,
+    ContactUpdateError, ContactDeleteError, DuplicateContactEmailError
+)
+
+logger = logging.getLogger(__name__)
 
 
 class ContactService:
-    def __init__(self, db: Session):
+    def __init__(self, db: AsyncSession):
         self.db = db
+        self.contact_repo = ContactRepository(self.db)
 
     async def create_contact(self, contact_data: ContactCreate, user_id: str) -> ContactResponse:
         """Create a new contact"""
-        # Check for duplicate name within user's contacts
-        existing = self.db.query(Contact).filter(
-            and_(
-                Contact.user_id == user_id,
-                Contact.name == contact_data.name,
-                Contact.is_active == True
-            )
-        ).first()
-        
-        if existing:
-            raise ContactAlreadyExistsError(f"Contact '{contact_data.name}' already exists")
+        try:
+            # Business logic: Check for duplicate name within user's contacts
+            is_duplicate_name = await self.contact_repo.check_duplicate_name(user_id, contact_data.name)
+            
+            if is_duplicate_name:
+                raise ContactAlreadyExistsError(f"Contact '{contact_data.name}' already exists")
 
-        contact = Contact(
-            **contact_data.model_dump(),
-            user_id=user_id
-        )
-        self.db.add(contact)
-        self.db.commit()
-        self.db.refresh(contact)
-        
-        return ContactResponse.model_validate(contact)
+            # Business logic: Check for duplicate email if provided
+            if contact_data.email:
+                is_duplicate_email = await self.contact_repo.check_duplicate_email(user_id, contact_data.email)
+                
+                if is_duplicate_email:
+                    raise DuplicateContactEmailError(f"Contact with email '{contact_data.email}' already exists")
+
+            # Business logic: Create contact model
+            contact = Contact(
+                **contact_data.model_dump(),
+                user_id=user_id
+            )
+            
+            # Delegate to repository for data access
+            created_contact = await self.contact_repo.create(contact)
+            
+            return ContactResponse.model_validate(created_contact)
+            
+        except Exception as e:
+            logger.error(f"Error creating contact for user {user_id}: {str(e)}")
+            raise
 
     async def get_contact(self, contact_id: UUID, user_id: str) -> ContactResponse:
         """Get a contact by ID"""
-        contact = self.db.query(Contact).filter(
-            and_(
-                Contact.id == contact_id,
-                Contact.user_id == user_id,
-                Contact.is_active == True
-            )
-        ).first()
-        
-        if not contact:
-            raise ContactNotFoundError("Contact not found")
-        
-        return ContactResponse.model_validate(contact)
+        try:
+            # Delegate to repository for data access
+            contact = await self.contact_repo.get_by_id(contact_id, user_id)
+            
+            if not contact:
+                raise ContactNotFoundError("Contact not found")
+            
+            return ContactResponse.model_validate(contact)
+            
+        except Exception as e:
+            logger.error(f"Error getting contact {contact_id} for user {user_id}: {str(e)}")
+            raise
 
     async def list_contacts(
         self,
@@ -58,35 +72,19 @@ class ContactService:
         search: Optional[str] = None,
         skip: int = 0,
         limit: int = 100
-    ) -> tuple[List[ContactResponse], int]:
+    ) -> Tuple[List[ContactResponse], int]:
         """List contacts with filtering"""
-        query = self.db.query(Contact).filter(
-            and_(
-                Contact.user_id == user_id,
-                Contact.is_active == True
+        try:
+            # Delegate to repository for data access
+            contacts, total_count = await self.contact_repo.get_contacts(
+                user_id, contact_type, search, skip, limit
             )
-        )
-        
-        if contact_type:
-            query = query.filter(Contact.contact_type == contact_type)
-        
-        if search:
-            search_term = f"%{search}%"
-            query = query.filter(
-                or_(
-                    Contact.name.ilike(search_term),
-                    Contact.email.ilike(search_term),
-                    Contact.tax_number.ilike(search_term)
-                )
-            )
-        
-        # Get total count
-        total_count = query.count()
-        
-        # Get paginated results
-        contacts = query.order_by(Contact.name).offset(skip).limit(limit).all()
-        
-        return [ContactResponse.model_validate(contact) for contact in contacts], total_count
+            
+            return [ContactResponse.model_validate(contact) for contact in contacts], total_count
+            
+        except Exception as e:
+            logger.error(f"Error listing contacts for user {user_id}: {str(e)}")
+            raise
 
     async def update_contact(
         self,
@@ -95,54 +93,58 @@ class ContactService:
         user_id: str
     ) -> ContactResponse:
         """Update a contact"""
-        contact = self.db.query(Contact).filter(
-            and_(
-                Contact.id == contact_id,
-                Contact.user_id == user_id,
-                Contact.is_active == True
-            )
-        ).first()
-        
-        if not contact:
-            raise ContactNotFoundError("Contact not found")
+        try:
+            # Get contact from repository
+            contact = await self.contact_repo.get_by_id(contact_id, user_id)
+            
+            if not contact:
+                raise ContactNotFoundError("Contact not found")
 
-        # Check for duplicate name if name is being updated
-        update_data = contact_data.model_dump(exclude_unset=True)
-        if 'name' in update_data and update_data['name'] != contact.name:
-            existing = self.db.query(Contact).filter(
-                and_(
-                    Contact.user_id == user_id,
-                    Contact.name == update_data['name'],
-                    Contact.id != contact_id,
-                    Contact.is_active == True
+            # Business logic: Check for duplicate name if name is being updated
+            update_data = contact_data.model_dump(exclude_unset=True)
+            if 'name' in update_data and update_data['name'] != contact.name:
+                is_duplicate_name = await self.contact_repo.check_duplicate_name(
+                    user_id, update_data['name'], contact_id
                 )
-            ).first()
-            if existing:
-                raise ContactAlreadyExistsError(f"Contact '{update_data['name']}' already exists")
+                if is_duplicate_name:
+                    raise ContactAlreadyExistsError(f"Contact '{update_data['name']}' already exists")
 
-        for field, value in update_data.items():
-            setattr(contact, field, value)
+            # Business logic: Check for duplicate email if email is being updated
+            if 'email' in update_data and update_data['email'] != contact.email:
+                is_duplicate_email = await self.contact_repo.check_duplicate_email(
+                    user_id, update_data['email'], contact_id
+                )
+                if is_duplicate_email:
+                    raise DuplicateContactEmailError(f"Contact with email '{update_data['email']}' already exists")
 
-        self.db.commit()
-        self.db.refresh(contact)
-        
-        return ContactResponse.model_validate(contact)
+            # Business logic: Update fields
+            for field, value in update_data.items():
+                setattr(contact, field, value)
+
+            # Delegate to repository for data access
+            updated_contact = await self.contact_repo.update(contact)
+            
+            return ContactResponse.model_validate(updated_contact)
+            
+        except Exception as e:
+            logger.error(f"Error updating contact {contact_id} for user {user_id}: {str(e)}")
+            raise ContactUpdateError(f"Failed to update contact: {str(e)}")
 
     async def delete_contact(self, contact_id: UUID, user_id: str) -> None:
         """Soft delete a contact"""
-        contact = self.db.query(Contact).filter(
-            and_(
-                Contact.id == contact_id,
-                Contact.user_id == user_id,
-                Contact.is_active == True
-            )
-        ).first()
-        
-        if not contact:
-            raise ContactNotFoundError("Contact not found")
+        try:
+            # Get contact from repository
+            contact = await self.contact_repo.get_by_id(contact_id, user_id)
+            
+            if not contact:
+                raise ContactNotFoundError("Contact not found")
 
-        contact.is_active = False
-        self.db.commit()
+            # Delegate to repository for data access
+            await self.contact_repo.delete(contact)
+            
+        except Exception as e:
+            logger.error(f"Error deleting contact {contact_id} for user {user_id}: {str(e)}")
+            raise ContactDeleteError(f"Failed to delete contact: {str(e)}")
 
     async def get_contacts_summary(
         self,
@@ -150,31 +152,10 @@ class ContactService:
         contact_type: Optional[ContactType] = None
     ) -> List[dict]:
         """Get lightweight contact summary for dropdowns"""
-        query = self.db.query(
-            Contact.id,
-            Contact.name,
-            Contact.contact_type,
-            Contact.email,
-            Contact.phone
-        ).filter(
-            and_(
-                Contact.user_id == user_id,
-                Contact.is_active == True
-            )
-        )
-        
-        if contact_type:
-            query = query.filter(Contact.contact_type == contact_type)
-        
-        results = query.order_by(Contact.name).all()
-        
-        return [
-            {
-                "id": row.id,
-                "name": row.name,
-                "contact_type": row.contact_type,
-                "email": row.email,
-                "phone": row.phone
-            }
-            for row in results
-        ]
+        try:
+            # Delegate to repository for data access
+            return await self.contact_repo.get_contacts_summary(user_id, contact_type)
+            
+        except Exception as e:
+            logger.error(f"Error getting contacts summary for user {user_id}: {str(e)}")
+            raise

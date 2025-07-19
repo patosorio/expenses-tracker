@@ -7,17 +7,20 @@ import { useToast } from '@/components/ui/use-toast'
 import { ContactsToolbar } from '@/components/contacts/ContactsToolBar'
 import { ContactsTable } from '@/components/contacts/ContactsTable'
 import { ContactsPagination } from '@/components/contacts/contacts-pagination'
-import { useContacts } from '@/lib/hooks/contacts/use-contacts'
-import { useTableColumns } from '@/lib/hooks/contacts/use-table-columns'
-import { Contact, ContactFilters, CreateContactPayload } from '@/lib/types/contacts'
-import { deleteContact, createContact } from '@/lib/api/contacts'
+import { useContacts } from '@/hooks/contacts/use-contacts'
+import { useTableColumns } from '@/hooks/contacts/use-table-columns'
+import { Contact, ContactFilters, CreateContactPayload } from '@/types/contacts'
+import { deleteContact, createContact } from '@/api/contacts'
 import { AddContactDialog } from '@/components/contacts/AddContactDialog'
+import { EditContactDialog } from '@/components/contacts/EditContactDialog'
 
 export default function ContactsPage() {
   const { toast } = useToast()
   const [pageSize, setPageSize] = useState(25)
   const [currentSort, setCurrentSort] = useState({ field: 'created_at', order: 'desc' as 'asc' | 'desc' })
   const [filters, setFilters] = useState<ContactFilters>({})
+  const [editContact, setEditContact] = useState<Contact | null>(null)
+  const [editDialogOpen, setEditDialogOpen] = useState(false)
 
   // Table columns management
   const { columns, visibleColumns, toggleColumn, resetColumns } = useTableColumns()
@@ -110,22 +113,24 @@ export default function ContactsPage() {
   }, [toast])
 
   const handleEditContact = useCallback((contact: Contact) => {
-    // TODO: Implement edit contact modal/page
-    toast({
-      title: "Edit Contact",
-      description: `Editing contact: ${contact.name}`,
-    })
-  }, [toast])
+    setEditContact(contact)
+    setEditDialogOpen(true)
+  }, [])
 
   const handleDeleteContact = useCallback(async (contact: Contact) => {
     try {
+      console.log('Deleting contact:', contact.id, contact.name)
       await deleteContact(contact.id)
+      console.log('Contact deleted successfully, refetching data...')
       toast({
         title: "Contact Deleted",
         description: `${contact.name} has been deleted successfully.`,
       })
-      refetch()
+      // Force refetch to ensure UI is in sync with database
+      await refetch()
+      console.log('Data refetched after delete')
     } catch (err) {
+      console.error('Error deleting contact:', err)
       toast({
         title: "Error",
         description: "Failed to delete contact. Please try again.",
@@ -205,6 +210,14 @@ export default function ContactsPage() {
           loading={isLoading}
         />
       )}
+
+      {/* Edit Contact Dialog */}
+      <EditContactDialog
+        contact={editContact}
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+        onContactUpdated={refetch}
+      />
     </div>
   )
 }

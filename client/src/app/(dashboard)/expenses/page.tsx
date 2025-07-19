@@ -7,10 +7,10 @@ import { useToast } from '@/components/ui/use-toast'
 import { ExpensesToolbar } from '@/components/expenses/ExpensesToolbar'
 import { ExpensesTable } from '@/components/expenses/ExpensesTable'
 import { ExpensesPagination } from '@/components/expenses/expenses-pagination'
-import { useExpenses } from '@/lib/hooks/expenses/use-expenses'
-import { useTableColumns } from '@/lib/hooks/expenses/use-table-columns'
-import { Expense, ExpenseFilters, CreateExpensePayload } from '@/lib/types/expenses'
-import { deleteExpense, createExpense, markExpensePaid } from '@/lib/api/expenses'
+import { useExpenses } from '@/hooks/expenses/use-expenses'
+import { useTableColumns } from '@/hooks/expenses/use-table-columns'
+import { Expense, ExpenseFilters, CreateExpensePayload } from '@/types/expenses'
+import { deleteExpense, createExpense, markExpensePaid } from '@/api/expenses'
 import { AddExpenseDialog } from '@/components/expenses/AddExpenseDialog'
 
 export default function ExpensesPage() {
@@ -82,19 +82,12 @@ export default function ExpensesPage() {
   const handleAddExpense = useCallback(async (expenseData: CreateExpensePayload) => {
     try {
       await createExpense(expenseData)
-      toast({
-        title: "Expense Added",
-        description: `${expenseData.description} has been added successfully.`,
-      })
       refetch()
-    } catch {
-      toast({
-        title: "Error",
-        description: "Failed to add expense. Please try again.",
-        variant: "destructive",
-      })
+    } catch (error) {
+      // Re-throw the error so the dialog can handle it
+      throw error
     }
-  }, [toast, refetch])
+  }, [refetch])
 
   const handleViewExpense = useCallback((expense: Expense) => {
     // TODO: Implement view expense modal/page

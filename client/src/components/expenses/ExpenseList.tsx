@@ -1,6 +1,6 @@
 import { Card, CardContent } from "@/components/ui/card"
 import { ExpenseCard } from "./ExpenseCard"
-import type { Expense } from "@/lib/types/expenses"
+import type { Expense } from "@/types/expenses"
 
 interface ExpenseListProps {
   expenses: Expense[]

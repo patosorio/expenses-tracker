@@ -1,7 +1,7 @@
 "use client"
 
 import { Card, CardContent} from "@/components/ui/card"
-import { useAuth } from "@/lib/contexts/AuthContext"
+import { useAuth } from "@/contexts/AuthContext"
 
 export default function DashboardPage() {
   const { loading } = useAuth()

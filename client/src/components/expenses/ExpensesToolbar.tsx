@@ -13,8 +13,8 @@ import {
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Expense, ExpenseFilters, ExpenseType, PaymentStatus, PaymentMethod } from '@/lib/types/expenses'
-import { TableColumn } from '@/lib/hooks/expenses/use-table-columns'
+import { Expense, ExpenseFilters, ExpenseType, PaymentStatus, PaymentMethod } from '@/types/expenses'
+import { TableColumn } from '@/hooks/expenses/use-table-columns'
 
 interface ExpensesToolbarProps {
   filters: ExpenseFilters
@@ -126,8 +126,8 @@ export const ExpensesToolbar = ({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All types</SelectItem>
-                <SelectItem value={ExpenseType.simple}>Receipt</SelectItem>
-                <SelectItem value={ExpenseType.invoice}>Invoice</SelectItem>
+                <SelectItem value={ExpenseType.SIMPLE}>Receipt</SelectItem>
+                <SelectItem value={ExpenseType.INVOICE}>Invoice</SelectItem>
               </SelectContent>
             </Select>
           </div>

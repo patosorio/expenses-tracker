@@ -14,7 +14,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Plus } from "lucide-react"
-import { ContactType, CreateContactPayload } from "@/lib/types/contacts"
+import { ContactType, CreateContactPayload } from "@/types/contacts"
 import { useToast } from "@/components/ui/use-toast"
 
 interface AddContactDialogProps {

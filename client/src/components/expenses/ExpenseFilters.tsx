@@ -2,8 +2,8 @@ import { Search } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import type { ExpenseFilters } from "@/lib/types/expenses"
-import { PaymentStatus } from "@/lib/types/expenses"
+import type { ExpenseFilters } from "@/types/expenses"
+import { PaymentStatus } from "@/types/expenses"
 import { UUID } from "crypto"
 
 interface ExpenseFiltersProps {

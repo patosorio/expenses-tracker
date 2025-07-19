@@ -1,5 +1,5 @@
-from pydantic import BaseModel, EmailStr, Field, validator
-from typing import Optional, Literal
+from pydantic import BaseModel, EmailStr, Field, field_validator, ConfigDict
+from typing import Optional, Literal, List
 from datetime import datetime
 from decimal import Decimal
 from uuid import UUID
@@ -60,8 +60,7 @@ class BusinessSettingsResponse(BusinessSettingsBase):
     created_at: datetime
     updated_at: Optional[datetime] = None
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 # Tax Configuration Schemas
 class TaxConfigurationBase(BaseModel):
@@ -91,5 +90,11 @@ class TaxConfigurationResponse(TaxConfigurationBase):
     created_at: datetime
     updated_at: Optional[datetime] = None
     
-    class Config:
-        from_attributes = True 
+    model_config = ConfigDict(from_attributes=True)
+
+class TaxConfigurationListResponse(BaseModel):
+    tax_configurations: List[TaxConfigurationResponse]
+    total: int
+    page: int
+    per_page: int
+    pages: int 

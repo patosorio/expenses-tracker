@@ -1,14 +1,11 @@
 from datetime import datetime
-from typing import Optional, List, Dict, Any, Union, TYPE_CHECKING
+from typing import Optional, List, Dict, Any, Union, TYPE_CHECKING, Annotated
 from uuid import UUID
 from decimal import Decimal
 
 from pydantic import BaseModel, field_validator, computed_field, ConfigDict
 
-from src.expenses.models import ExpenseType, PaymentMethod, PaymentStatus, AnalysisStatus
-
-if TYPE_CHECKING:
-    from src.contacts.schemas import ContactResponse
+from .models import ExpenseType, PaymentMethod, PaymentStatus, AnalysisStatus
 
 
 # Base Schemas
@@ -17,7 +14,7 @@ class ExpenseBase(BaseModel):
     expense_date: datetime
     notes: Optional[str] = None
     receipt_url: Optional[str] = None
-    expense_type: ExpenseType = ExpenseType.simple
+    expense_type: ExpenseType = ExpenseType.SIMPLE
     category_id: UUID
     payment_method: Optional[PaymentMethod] = None
     payment_status: PaymentStatus = PaymentStatus.PENDING
@@ -115,6 +112,7 @@ class SimpleExpenseCreate(BaseModel):
     """Schema for creating simple (receipt) expenses"""
     description: str
     expense_date: datetime
+    expense_type: ExpenseType = ExpenseType.SIMPLE
     notes: Optional[str] = None
     receipt_url: Optional[str] = None
     category_id: UUID
@@ -143,6 +141,7 @@ class InvoiceExpenseCreate(BaseModel):
     """Schema for creating invoice expenses with tax calculations"""
     description: str
     expense_date: datetime
+    expense_type: ExpenseType = ExpenseType.INVOICE
     notes: Optional[str] = None
     receipt_url: Optional[str] = None
     category_id: UUID
@@ -254,10 +253,42 @@ class ExpenseResponse(ExpenseBase):
     updated_at: Optional[datetime] = None
     is_active: bool
     
-    # Related objects
-    contact: Optional["ContactResponse"] = None
-    attachments: List[AttachmentResponse] = []
+    # Related objects - made optional to avoid async loading issues
+    contact: Optional[Dict[str, Any]] = None  # Using Dict instead of ContactResponse to avoid circular import
+    attachments: Optional[List[AttachmentResponse]] = None
     document_analysis: Optional[DocumentAnalysisResponse] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ExpenseCreateResponse(BaseModel):
+    """Simplified expense response for creation endpoints"""
+    id: UUID
+    description: str
+    expense_date: datetime
+    expense_type: ExpenseType
+    notes: Optional[str] = None
+    receipt_url: Optional[str] = None
+    category_id: UUID
+    payment_method: Optional[PaymentMethod] = None
+    payment_status: PaymentStatus
+    payment_date: Optional[datetime] = None
+    invoice_number: Optional[str] = None
+    contact_id: Optional[UUID] = None
+    payment_due_date: Optional[datetime] = None
+    base_amount: Decimal
+    tax_amount: Decimal
+    total_amount: Decimal
+    currency: str
+    tax_config_id: Optional[UUID] = None
+    tags: Optional[List[str]] = None
+    custom_fields: Optional[Dict[str, Any]] = None
+    user_id: str
+    is_overdue: bool
+    days_overdue: int
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+    is_active: bool
 
     model_config = ConfigDict(from_attributes=True)
 

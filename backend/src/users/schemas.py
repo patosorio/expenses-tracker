@@ -2,9 +2,9 @@ from datetime import datetime
 from typing import Optional, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, EmailStr, computed_field
+from pydantic import BaseModel, EmailStr, computed_field, ConfigDict
 
-from src.users.models import UserRole, UserStatus
+from .models import UserRole, UserStatus
 
 
 class UserBase(BaseModel):
@@ -44,8 +44,8 @@ class UserResponse(UserBase):
     updated_at: Optional[datetime] = None
     last_login: Optional[datetime] = None
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
+
 
 class UserListResponse(BaseModel):
     users: list[UserResponse]
@@ -53,6 +53,7 @@ class UserListResponse(BaseModel):
     page: int
     per_page: int
     pages: int
+
 
 class UserStatsResponse(BaseModel):
     total_users: int
@@ -114,8 +115,7 @@ class UserSettingsResponse(BaseModel):
     created_at: datetime
     updated_at: Optional[datetime] = None
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class UserSettingsUpdate(BaseModel):

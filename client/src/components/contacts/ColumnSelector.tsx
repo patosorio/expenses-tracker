@@ -10,7 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuItem
 } from '@/components/ui/dropdown-menu'
-import { Contact, TableColumn } from '@/lib/types/contacts'
+import { Contact, TableColumn } from '@/types/contacts'
 
 interface ColumnSelectorProps {
   columns: TableColumn[]

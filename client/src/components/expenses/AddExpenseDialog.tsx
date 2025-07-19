@@ -9,12 +9,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { format } from "date-fns"
 import { Plus, Search, UserPlus, Loader2, ChevronDown } from "lucide-react"
 import { Tabs, TabsList, TabsContent, TabsTrigger } from "@/components/ui/tabs"
-import { CreateExpensePayload, ExpenseType, PaymentMethod } from "@/lib/types/expenses"
-import { Category } from "@/lib/types/settings"
-import { Contact, ContactType } from "@/lib/types/contacts"
-import { settingsApi } from "@/lib/api/settings"
-import { searchVendorsAndSuppliers } from "@/lib/api/contacts"
-import { useAuth } from "@/lib/contexts/AuthContext"
+import { CreateExpensePayload, ExpenseType, PaymentMethod } from "@/types/expenses"
+import { Category } from "@/types/settings"
+import { Contact, ContactType } from "@/types/contacts"
+import { settingsApi } from "@/api/settings"
+import { searchVendorsAndSuppliers } from "@/api/contacts"
+import { useAuth } from "@/contexts/AuthContext"
 import { UUID } from "crypto"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
@@ -22,22 +22,23 @@ import { cn } from "@/lib/utils/utils"
 import { CalendarIcon } from "lucide-react"
 import { Textarea } from "@/components/ui/textarea"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
+import { useToast } from "@/components/ui/use-toast"
 
-const paymentMethods = Object.values(PaymentMethod).map(method => ({
-  value: method,
-  label: method.replace(/_/g, ' ').toLowerCase()
-    .split(' ')
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ')
-}))
+const paymentMethods = [
+  { value: 'CASH', label: 'Cash' },
+  { value: 'CARD', label: 'Card' },
+  { value: 'BANK_TRANSFER', label: 'Bank Transfer' },
+  { value: 'DIGITAL_WALLET', label: 'Digital Wallet' }
+]
 
 interface AddExpenseDialogProps {
   onAddExpense: (expense: CreateExpensePayload) => Promise<void>
 }
 
 export function AddExpenseDialog({ onAddExpense }: AddExpenseDialogProps) {
+  const { toast } = useToast()
   const [open, setOpen] = useState(false)
-  const [expenseType, setExpenseType] = useState<ExpenseType>(ExpenseType.simple)
+  const [expenseType, setExpenseType] = useState<ExpenseType>(ExpenseType.SIMPLE)
   
   // Form data
   const [description, setDescription] = useState("")
@@ -70,7 +71,7 @@ export function AddExpenseDialog({ onAddExpense }: AddExpenseDialogProps) {
   const { token } = useAuth()
 
   // Calculate total amount for invoice
-  const calculatedTotal = expenseType === ExpenseType.invoice 
+  const calculatedTotal = expenseType === ExpenseType.INVOICE 
     ? (Number(baseAmount) || 0) + (Number(taxAmount) || 0)
     : Number(totalAmount) || 0
 
@@ -121,43 +122,73 @@ export function AddExpenseDialog({ onAddExpense }: AddExpenseDialogProps) {
     }
   }
 
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     
+    // Prevent multiple submissions
+    if (isSubmitting) {
+      return
+    }
+    
     if (!description.trim()) {
-      // TODO: Show error toast
+      toast({
+        title: "Validation Error",
+        description: "Description is required",
+        variant: "destructive",
+      })
       return
     }
 
     if (!selectedCategory) {
-      // TODO: Show error toast
+      toast({
+        title: "Validation Error",
+        description: "Category is required",
+        variant: "destructive",
+      })
       return
     }
 
-    if (expenseType === ExpenseType.simple && !selectedPaymentMethod) {
-      // TODO: Show error toast
+    if (expenseType === ExpenseType.SIMPLE && !selectedPaymentMethod) {
+      toast({
+        title: "Validation Error",
+        description: "Payment method is required",
+        variant: "destructive",
+      })
       return
     }
 
-    if (expenseType === ExpenseType.invoice && !selectedContact) {
-      // TODO: Show error toast
+    if (expenseType === ExpenseType.INVOICE && !selectedContact) {
+      toast({
+        title: "Validation Error",
+        description: "Contact is required for invoices",
+        variant: "destructive",
+      })
       return
     }
 
-    const amount = expenseType === ExpenseType.simple 
+    const amount = expenseType === ExpenseType.SIMPLE 
       ? Number(totalAmount) 
       : calculatedTotal
 
     if (isNaN(amount) || amount <= 0) {
-      // TODO: Show error toast
+      toast({
+        title: "Validation Error",
+        description: "Please enter a valid amount greater than 0",
+        variant: "destructive",
+      })
       return
     }
+
+    // Convert string to PaymentMethod enum
+    const paymentMethod = selectedPaymentMethod as PaymentMethod
 
     const expense: CreateExpensePayload = {
       description: description.trim(),
       expense_date: format(expenseDate, 'yyyy-MM-dd'),
       category_id: selectedCategory as UUID,
-      payment_method: selectedPaymentMethod as PaymentMethod,
+      payment_method: paymentMethod,
       total_amount: amount,
       notes: notes.trim() || undefined,
       currency: 'EUR',
@@ -169,7 +200,7 @@ export function AddExpenseDialog({ onAddExpense }: AddExpenseDialogProps) {
           contact_id: selectedContact,
         }),
         // Invoice-specific fields
-        ...(expenseType === ExpenseType.invoice && {
+        ...(expenseType === ExpenseType.INVOICE && {
           invoice_number: invoiceNumber.trim(),
           payment_due_date: dueDate ? format(dueDate, 'yyyy-MM-dd') : undefined,
           base_amount: baseAmount,
@@ -178,13 +209,25 @@ export function AddExpenseDialog({ onAddExpense }: AddExpenseDialogProps) {
       }
     }
 
+    setIsSubmitting(true)
     try {
       await onAddExpense(expense)
+      toast({
+        title: "Success",
+        description: "Expense added successfully",
+      })
       setOpen(false)
       resetForm()
     } catch (error) {
       console.error('Failed to add expense:', error)
-      // TODO: Show error toast
+      const errorMessage = error instanceof Error ? error.message : "Failed to add expense. Please try again."
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      })
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -241,12 +284,12 @@ export function AddExpenseDialog({ onAddExpense }: AddExpenseDialogProps) {
           {/* Expense Type Tabs */}
           <Tabs value={expenseType} onValueChange={(value) => setExpenseType(value as ExpenseType)}>
             <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value={ExpenseType.simple}>Ticket</TabsTrigger>
-              <TabsTrigger value={ExpenseType.invoice}>Invoice</TabsTrigger>
+              <TabsTrigger value={ExpenseType.SIMPLE}>Ticket</TabsTrigger>
+              <TabsTrigger value={ExpenseType.INVOICE}>Invoice</TabsTrigger>
             </TabsList>
           </Tabs>
 
-          {expenseType === ExpenseType.simple ? (
+          {expenseType === ExpenseType.SIMPLE ? (
             // TICKET LAYOUT
             <div className="space-y-4">
               {/* Description */}
@@ -322,7 +365,7 @@ export function AddExpenseDialog({ onAddExpense }: AddExpenseDialogProps) {
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-[400px] p-0" style={{ zIndex: 9999 }}>
-                      <Command>
+                      <Command shouldFilter={false}>
                         <CommandInput 
                           placeholder="Search vendors and suppliers..." 
                           value={contactSearchValue}
@@ -343,7 +386,7 @@ export function AddExpenseDialog({ onAddExpense }: AddExpenseDialogProps) {
                             {searchedContacts.map((contact) => (
                               <CommandItem
                                 key={contact.id}
-                                value={contact.id}
+                                value={contact.name}
                                 onSelect={() => {
                                   setSelectedContact(contact.id)
                                   setContactSearchOpen(false)
@@ -367,7 +410,11 @@ export function AddExpenseDialog({ onAddExpense }: AddExpenseDialogProps) {
                 {/* Payment Method */}
                 <div className="space-y-2">
                   <Label>Payment Method *</Label>
-                  <Select value={selectedPaymentMethod} onValueChange={setSelectedPaymentMethod} required>
+                  <Select 
+                    value={selectedPaymentMethod} 
+                    onValueChange={setSelectedPaymentMethod} 
+                    required
+                  >
                     <SelectTrigger className="w-full">
                       <SelectValue placeholder="Select payment method" />
                     </SelectTrigger>
@@ -439,7 +486,7 @@ export function AddExpenseDialog({ onAddExpense }: AddExpenseDialogProps) {
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-[400px] p-0" style={{ zIndex: 9999 }}>
-                      <Command>
+                      <Command shouldFilter={false}>
                         <CommandInput 
                           placeholder="Search vendors and suppliers..." 
                           value={contactSearchValue}
@@ -460,7 +507,7 @@ export function AddExpenseDialog({ onAddExpense }: AddExpenseDialogProps) {
                             {searchedContacts.map((contact) => (
                               <CommandItem
                                 key={contact.id}
-                                value={contact.id}
+                                value={contact.name}
                                 onSelect={() => {
                                   setSelectedContact(contact.id)
                                   setContactSearchOpen(false)
@@ -643,11 +690,11 @@ export function AddExpenseDialog({ onAddExpense }: AddExpenseDialogProps) {
 
           {/* Action Buttons */}
           <div className="flex justify-end space-x-2 pt-4">
-            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+            <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={isSubmitting}>
               Cancel
             </Button>
-            <Button type="submit" disabled={loading}>
-              {loading ? "Adding..." : "Add Expense"}
+            <Button type="submit" disabled={loading || isSubmitting}>
+              {isSubmitting ? "Adding..." : "Add Expense"}
             </Button>
           </div>
         </form>

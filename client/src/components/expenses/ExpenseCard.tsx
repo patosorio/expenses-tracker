@@ -3,8 +3,8 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import type { Expense } from "@/lib/types/expenses"
-import { PaymentStatus } from "@/lib/types/expenses"
+import type { Expense } from "@/types/expenses"
+import { PaymentStatus } from "@/types/expenses"
 
 interface ExpenseCardProps {
   expense: Expense

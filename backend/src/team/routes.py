@@ -1,17 +1,17 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Optional
 
-from src.team.models import TeamMember, TeamInvitation
-from src.team.schemas import (
+from .models import TeamMember, TeamInvitation
+from .schemas import (
     TeamMemberResponse, TeamMemberInvite, TeamMemberUpdate,
     TeamInvitationResponse, TeamInvitationAccept, TeamStats
 )
-from src.team.service import TeamService
-from src.auth.dependencies import get_current_user
-from src.users.models import User
-from src.database import get_db
-from src.exceptions import (
+from .service import TeamService
+from ..auth.dependencies import get_current_user
+from ..users.models import User
+from ..core.database import get_db
+from .exceptions import (
     TeamMemberNotFoundError, TeamInvitationNotFoundError,
     TeamInvitationExpiredError, DuplicateTeamMemberError
 )
@@ -25,7 +25,7 @@ async def get_team_members(
     role: Optional[str] = Query(None, description="Filter by role"),
     department: Optional[str] = Query(None, description="Filter by department"),
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     """Get team members"""
     try:
@@ -47,7 +47,7 @@ async def get_team_members(
 async def get_team_member(
     member_id: str,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     """Get specific team member"""
     try:
@@ -69,7 +69,7 @@ async def get_team_member(
 async def invite_team_member(
     invitation_data: TeamMemberInvite,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     """Invite team member"""
     try:
@@ -95,7 +95,7 @@ async def update_team_member(
     member_id: str,
     update_data: TeamMemberUpdate,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     """Update team member"""
     try:
@@ -119,7 +119,7 @@ async def update_team_member(
 async def remove_team_member(
     member_id: str,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     """Remove team member"""
     try:
@@ -141,7 +141,7 @@ async def remove_team_member(
 async def accept_team_invitation(
     invitation_data: TeamInvitationAccept,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     """Accept team invitation"""
     try:
@@ -165,7 +165,7 @@ async def accept_team_invitation(
 @router.get("/stats", response_model=TeamStats)
 async def get_team_stats(
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     """Get team statistics"""
     try:

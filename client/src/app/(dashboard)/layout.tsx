@@ -3,7 +3,7 @@
 import type React from "react"
 import { useState } from "react"
 
-import { useAuth } from "@/lib/contexts/AuthContext"
+import { useAuth } from "@/contexts/AuthContext"
 import { DashboardSidebar } from "@/components/layout/dashboard-sidebar"
 import { DashboardTopbar } from "@/components/layout/dashboard-topbar"
 import { useRouter } from "next/navigation"

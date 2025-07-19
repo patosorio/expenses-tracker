@@ -1,38 +1,38 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File, Form
 from fastapi.responses import StreamingResponse
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional, List, Dict, Any
 from uuid import UUID
 from datetime import datetime
 import logging
 
-from src.expenses.service import ExpenseService
-from src.expenses.schemas import (
+from .service import ExpenseService
+from .schemas import (
     # Request schemas
     SimpleExpenseCreate, InvoiceExpenseCreate, ExpenseUpdate,
     AttachmentCreate, DocumentAnalysisCreate, ExpenseFilter,
     
     # Response schemas
-    ExpenseResponse, ExpenseListResponse, ExpenseListPaginatedResponse,
+    ExpenseResponse, ExpenseCreateResponse, ExpenseListResponse, ExpenseListPaginatedResponse,
     AttachmentResponse, DocumentAnalysisResponse,
     ExpensePreviewResponse, OverdueExpensesListResponse, ExpenseStats,
     ExpenseSummary
 )
-from src.expenses.models import ExpenseType, PaymentMethod, PaymentStatus, AnalysisStatus
-from src.auth.dependencies import get_current_user
-from src.users.models import User
-from src.database import get_db
+from .models import ExpenseType, PaymentMethod, PaymentStatus, AnalysisStatus
+from ..auth.dependencies import get_current_user
+from ..users.models import User
+from ..core.database import get_db
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
 
 # Core CRUD Operations
-@router.post("/simple", response_model=ExpenseResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/simple", response_model=ExpenseCreateResponse, status_code=status.HTTP_201_CREATED)
 async def create_simple_expense(
     expense_data: SimpleExpenseCreate,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     """Create a simple (receipt) expense"""
     try:
@@ -47,11 +47,11 @@ async def create_simple_expense(
         )
 
 
-@router.post("/invoice", response_model=ExpenseResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/invoice", response_model=ExpenseCreateResponse, status_code=status.HTTP_201_CREATED)
 async def create_invoice_expense(
     expense_data: InvoiceExpenseCreate,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     """Create an invoice expense with tax calculations"""
     try:
@@ -90,7 +90,7 @@ async def get_expenses(
     sort_order: str = Query("desc", pattern="^(asc|desc)$"),
     
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     """Get expenses with advanced filtering and pagination"""
     try:
@@ -139,7 +139,7 @@ async def get_expenses(
 @router.get("/overdue", response_model=OverdueExpensesListResponse)
 async def get_overdue_expenses(
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     """Get all overdue invoice expenses"""
     try:
@@ -156,7 +156,7 @@ async def get_overdue_expenses(
 @router.get("/stats", response_model=ExpenseStats)
 async def get_expense_stats(
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     """Get comprehensive expense statistics"""
     try:
@@ -174,7 +174,7 @@ async def get_expense_stats(
 async def get_expense(
     expense_id: UUID,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     """Get expense by ID with full relationships"""
     try:
@@ -201,7 +201,7 @@ async def update_expense(
     expense_id: UUID,
     expense_data: ExpenseUpdate,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     """Update expense with tax recalculation if needed"""
     try:
@@ -220,7 +220,7 @@ async def update_expense(
 async def delete_expense(
     expense_id: UUID,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     """Soft delete expense"""
     try:
@@ -239,7 +239,7 @@ async def mark_expense_paid(
     expense_id: UUID,
     payment_date: Optional[datetime] = None,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     """Mark expense as paid and set payment date"""
     try:
@@ -263,7 +263,7 @@ async def analyze_document(
     file: UploadFile = File(...),
     analysis_type: str = Form(default="receipt"),
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     """Analyze document with Google Vision API"""
     try:
@@ -303,17 +303,15 @@ async def analyze_document(
 async def get_document_analysis(
     analysis_id: UUID,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     """Get document analysis results"""
     try:
         service = ExpenseService(db)
-        # Get analysis (implementation would need to be added to service)
-        analysis = db.query(DocumentAnalysis).filter(
-            and_(DocumentAnalysis.id == analysis_id, DocumentAnalysis.user_id == current_user.id)
-        ).first()
+        # Get analysis using the service method
+        analysis = await service.expense_repo.get_document_analysis_by_id(analysis_id)
         
-        if not analysis:
+        if not analysis or analysis.user_id != current_user.id:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Document analysis not found"
@@ -336,7 +334,7 @@ async def create_expense_from_analysis(
     analysis_id: UUID,
     user_corrections: Optional[Dict[str, Any]] = None,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     """Create expense from document analysis results"""
     try:
@@ -362,7 +360,7 @@ async def upload_attachment(
     expense_id: UUID,
     file: UploadFile = File(...),
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     """Upload attachment to expense"""
     try:
@@ -402,7 +400,7 @@ async def upload_attachment(
 async def get_expense_attachments(
     expense_id: UUID,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     """Get expense attachments"""
     try:
@@ -435,7 +433,7 @@ async def get_invoice_expenses(
     supplier_name: Optional[str] = None,
     overdue_only: bool = False,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     """Get invoice expenses with filtering"""
     try:
@@ -443,7 +441,7 @@ async def get_invoice_expenses(
         
         # Build filter object for invoices only
         filters = ExpenseFilter(
-            expense_type=ExpenseType.invoice,
+            expense_type=ExpenseType.INVOICE,
             payment_status=payment_status,
             supplier_name=supplier_name,
             overdue_only=overdue_only
@@ -482,7 +480,7 @@ async def get_expenses_by_category(
     date_from: Optional[datetime] = None,
     date_to: Optional[datetime] = None,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     """Get expenses grouped by category"""
     try:
@@ -518,5 +516,5 @@ async def get_expenses_by_category(
 
 
 # Import missing dependencies
-from src.expenses.models import DocumentAnalysis
+from .models import DocumentAnalysis
 from sqlalchemy import and_

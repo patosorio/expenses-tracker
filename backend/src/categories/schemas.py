@@ -3,9 +3,9 @@ from typing import Optional, List, Union
 from uuid import UUID
 import re
 
-from pydantic import BaseModel, field_validator, computed_field
+from pydantic import BaseModel, field_validator, computed_field, ConfigDict
 
-from src.categories.models import CategoryType
+from .models import CategoryType
 
 
 class CategoryBase(BaseModel):
@@ -97,16 +97,14 @@ class CategoryResponse(CategoryBase):
     is_active: bool
     level: int = 0
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class CategoryWithChildren(CategoryResponse):
     """Schema for category with children relationships"""
     children: List['CategoryWithChildren'] = []
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class CategoryHierarchy(BaseModel):
@@ -120,8 +118,7 @@ class CategoryHierarchy(BaseModel):
     path: List[str]  # Breadcrumb path from root to this category
     children: List['CategoryHierarchy'] = []
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class CategoryPath(BaseModel):

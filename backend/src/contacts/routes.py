@@ -1,16 +1,16 @@
-from fastapi import APIRouter, Depends, Query, HTTPException
+from fastapi import APIRouter, Depends, Query, HTTPException, status
 from typing import List, Optional
 from uuid import UUID
 
 from .service import ContactService
-from src.exceptions import ContactNotFoundError, ContactAlreadyExistsError
+from .exceptions import ContactNotFoundError, ContactAlreadyExistsError
 from .schemas import ContactCreate, ContactUpdate, ContactResponse, ContactListResponse, ContactSummaryResponse
 from .models import ContactType
-from src.auth.dependencies import get_current_user
-from src.database import get_db
+from ..auth.dependencies import get_current_user
+from ..core.database import get_db
 
 
-router = APIRouter(tags=["contacts"])
+router = APIRouter()
 
 
 @router.post("/", response_model=ContactResponse)
@@ -24,10 +24,16 @@ async def create_contact(
     try:
         return await service.create_contact(contact_data, current_user.id)
     except ContactAlreadyExistsError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
     except Exception as e:
         print(f"Error creating contact: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to create contact: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to create contact: {str(e)}"
+        )
 
 
 @router.get("/", response_model=ContactListResponse)
@@ -83,7 +89,10 @@ async def get_contact(
     try:
         return await service.get_contact(contact_id, current_user.id)
     except ContactNotFoundError:
-        raise HTTPException(status_code=404, detail="Contact not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Contact not found"
+        )
 
 
 @router.put("/{contact_id}", response_model=ContactResponse)
@@ -98,9 +107,15 @@ async def update_contact(
     try:
         return await service.update_contact(contact_id, contact_data, current_user.id)
     except ContactNotFoundError:
-        raise HTTPException(status_code=404, detail="Contact not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Contact not found"
+        )
     except ContactAlreadyExistsError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
 
 
 @router.delete("/{contact_id}")
@@ -115,4 +130,7 @@ async def delete_contact(
         await service.delete_contact(contact_id, current_user.id)
         return {"message": "Contact deleted successfully"}
     except ContactNotFoundError:
-        raise HTTPException(status_code=404, detail="Contact not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Contact not found"
+        )

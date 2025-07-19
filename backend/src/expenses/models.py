@@ -7,32 +7,32 @@ from datetime import datetime, date
 from enum import Enum as PyEnum
 from decimal import Decimal
 
-from src.database import Base
+from ..core.database import Base
 
 
 class ExpenseType(str, PyEnum):
-    simple = "simple"  # Receipt-type expenses, paid immediately
-    invoice = "invoice"  # Invoice-type expenses with payment terms
+    SIMPLE = "SIMPLE"  # Receipt-type expenses, paid immediately
+    INVOICE = "INVOICE"  # Invoice-type expenses with payment terms
 
 
 class PaymentMethod(str, PyEnum):
-    CASH = "cash"
-    CARD = "card"
-    BANK_TRANSFER = "bank_transfer"
-    DIGITAL_WALLET = "digital_wallet"
+    CASH = "CASH"
+    CARD = "CARD"
+    BANK_TRANSFER = "BANK_TRANSFER"
+    DIGITAL_WALLET = "DIGITAL_WALLET"
 
 
 class PaymentStatus(str, PyEnum):
-    PENDING = "pending"
-    PAID = "paid"
-    REFUNDED = "refunded"
+    PENDING = "PENDING"
+    PAID = "PAID"
+    REFUNDED = "REFUNDED"
 
 
 class AnalysisStatus(str, PyEnum):
-    PENDING = "pending"
-    PROCESSING = "processing"
-    COMPLETED = "completed"
-    FAILED = "failed"
+    PENDING = "PENDING"
+    PROCESSING = "PROCESSING"
+    COMPLETED = "COMPLETED"
+    FAILED = "FAILED"
 
 
 class Expense(Base):
@@ -52,7 +52,7 @@ class Expense(Base):
     expense_date = Column(DateTime(timezone=True), nullable=False, index=True)
     notes = Column(Text, nullable=True)
     receipt_url = Column(String(500), nullable=True)
-    expense_type = Column(Enum(ExpenseType), nullable=False, default=ExpenseType.simple)
+    expense_type = Column(Enum(ExpenseType), nullable=False, default=ExpenseType.SIMPLE)
     
     # Multitenant support
     user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
