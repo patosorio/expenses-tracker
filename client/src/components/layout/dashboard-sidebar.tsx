@@ -21,13 +21,12 @@ import {
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { name: "Contacts", href: "/contacts", icon: Users },
-  { name: "Projects", href: "/projects", icon: Briefcase },
-  { name: "Budgets", href: "/budgets", icon: PiggyBank },
   { name: "Expenses", href: "/expenses", icon: Receipt },
   { name: "Income", href: "/income", icon: TrendingUp },
-  { name: "Forecast", href: "/forecast", icon: LineChart },
-  { name: "Reports", href: "/reports", icon: FileText },
-  { name: "AI Assistant", href: "/ai-assistant", icon: Bot },
+  { name: "Projects", href: "/projects", icon: Briefcase },
+  { name: "Budgets", href: "/budgets", icon: PiggyBank },
+  { name: "Analytics", href: "/analytics", icon: FileText },
+  { name: "AI Insights", href: "/ai-insights", icon: Bot },
 ]
 
 interface DashboardSidebarProps {

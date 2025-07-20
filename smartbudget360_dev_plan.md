@@ -127,7 +127,7 @@ smartbudget360/
 ### Phase 2: Core Features (Weeks 3-4) 🚧
 - [x] User management and settings
 - [x] Hierarchical categories system
-- [ ] Complete expense management
+- [x] Complete expense management
 - [ ] Tax configuration system
 - [ ] Add Business data connect to backend
 - [ ] Add Projects
