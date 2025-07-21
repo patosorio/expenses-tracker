@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Expense, ExpenseFilters, ExpenseType, PaymentStatus, PaymentMethod } from '@/types/expenses'
-import { TableColumn } from '@/hooks/expenses/use-table-columns'
+import { TableColumn } from '@/hooks/expenses/UseTableColumns'
 
 interface ExpensesToolbarProps {
   filters: ExpenseFilters

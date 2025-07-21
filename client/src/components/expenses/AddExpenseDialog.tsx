@@ -13,7 +13,7 @@ import { CreateExpensePayload, ExpenseType, PaymentMethod } from "@/types/expens
 import { Category } from "@/types/settings"
 import { Contact, ContactType } from "@/types/contacts"
 import { settingsApi } from "@/api/settings"
-import { searchVendorsAndSuppliers } from "@/api/contacts"
+import { contactsApi } from "@/api/contacts"
 import { useAuth } from "@/contexts/AuthContext"
 import { UUID } from "crypto"
 import { Calendar } from "@/components/ui/calendar"
@@ -80,7 +80,7 @@ export function AddExpenseDialog({ onAddExpense }: AddExpenseDialogProps) {
     async (searchTerm: string) => {
       setContactSearchLoading(true)
       try {
-        const contacts = await searchVendorsAndSuppliers(searchTerm, 10)
+        const contacts = await contactsApi.searchVendorsAndSuppliers(searchTerm, 10)
         setSearchedContacts(contacts)
       } catch (error) {
         console.error('Failed to search contacts:', error)

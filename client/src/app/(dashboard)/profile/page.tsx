@@ -2,14 +2,14 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { updateUserProfile, getCurrentUserProfile } from '@/api/users';
-import { UserProfile as UserProfileType } from '@/types/user';
+import { usersApi } from '@/api/users';
+import type { UserProfile } from '@/types/user';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
 export default function UserProfile() {
   const { user, token } = useAuth();
-  const [profile, setProfile] = useState<UserProfileType | null>(null);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -23,7 +23,7 @@ export default function UserProfile() {
   const fetchProfile = async () => {
     if (!token) return;
     try {
-      const response = await getCurrentUserProfile(token);
+      const response = await usersApi.getCurrentUserProfile(token);
       setProfile(response);
     } catch (error) {
       console.error('Error fetching profile:', error);
@@ -32,11 +32,11 @@ export default function UserProfile() {
     }
   };
 
-  const handleSave = async (formData: Partial<UserProfileType>) => {
+  const handleSave = async (formData: Partial<UserProfile>) => {
     if (!token) return;
     setSaving(true);
     try {
-      const response = await updateUserProfile(token, formData);
+      const response = await usersApi.updateUserProfile(token, formData);
       setProfile(response);
       setIsEditing(false);
     } catch (error) {
@@ -77,7 +77,7 @@ export default function UserProfile() {
   );
 }
 
-function ProfileView({ profile }: { profile: UserProfileType | null }) {
+function ProfileView({ profile }: { profile: UserProfile | null }) {
   if (!profile) return null;
 
   return (
@@ -109,8 +109,8 @@ function EditProfileForm({
   onSave, 
   saving 
 }: { 
-  profile: UserProfileType | null; 
-  onSave: (data: Partial<UserProfileType>) => void;
+  profile: UserProfile | null; 
+  onSave: (data: Partial<UserProfile>) => void;
   saving: boolean;
 }) {
   const [formData, setFormData] = useState({

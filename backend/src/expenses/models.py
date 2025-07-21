@@ -170,14 +170,22 @@ class Expense(Base):
             return False
         if not self.payment_due_date:
             return False
-        return datetime.now(self.payment_due_date.tzinfo) > self.payment_due_date
+        # Handle timezone safely
+        now = datetime.utcnow()
+        if self.payment_due_date.tzinfo:
+            now = now.replace(tzinfo=self.payment_due_date.tzinfo)
+        return now > self.payment_due_date
     
     @property
     def days_overdue(self) -> int:
         """Calculate days overdue (invoices only)"""
         if not self.is_overdue:
             return 0
-        delta = datetime.now(self.payment_due_date.tzinfo) - self.payment_due_date
+        # Handle timezone safely
+        now = datetime.utcnow()
+        if self.payment_due_date.tzinfo:
+            now = now.replace(tzinfo=self.payment_due_date.tzinfo)
+        delta = now - self.payment_due_date
         return delta.days
     
     def calculate_tax_amount(self, tax_rate: Decimal) -> Decimal:

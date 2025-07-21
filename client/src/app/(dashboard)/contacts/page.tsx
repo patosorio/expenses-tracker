@@ -7,10 +7,10 @@ import { useToast } from '@/components/ui/use-toast'
 import { ContactsToolbar } from '@/components/contacts/ContactsToolBar'
 import { ContactsTable } from '@/components/contacts/ContactsTable'
 import { ContactsPagination } from '@/components/contacts/contacts-pagination'
-import { useContacts } from '@/hooks/contacts/use-contacts'
-import { useTableColumns } from '@/hooks/contacts/use-table-columns'
+import { useContacts } from '@/hooks/contacts/UseContacts'
+import { useTableColumns } from '@/hooks/contacts/UseTableColumns'
 import { Contact, ContactFilters, CreateContactPayload } from '@/types/contacts'
-import { deleteContact, createContact } from '@/api/contacts'
+import { contactsApi } from '@/api/contacts'
 import { AddContactDialog } from '@/components/contacts/AddContactDialog'
 import { EditContactDialog } from '@/components/contacts/EditContactDialog'
 
@@ -82,7 +82,7 @@ export default function ContactsPage() {
   // Handle contact actions
   const handleAddContact = useCallback(async (contactData: CreateContactPayload) => {
     try {
-      await createContact(contactData)
+      await contactsApi.createContact(contactData)
       toast({
         title: "Contact Added",
         description: `${contactData.name} has been added successfully.`,
@@ -120,7 +120,7 @@ export default function ContactsPage() {
   const handleDeleteContact = useCallback(async (contact: Contact) => {
     try {
       console.log('Deleting contact:', contact.id, contact.name)
-      await deleteContact(contact.id)
+      await contactsApi.deleteContact(contact.id)
       console.log('Contact deleted successfully, refetching data...')
       toast({
         title: "Contact Deleted",

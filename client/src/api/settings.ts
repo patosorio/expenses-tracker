@@ -11,356 +11,325 @@ import {
   Category,
   CategoryFormData,
   CategoryWithChildren,
-  SettingsResponse,
   IntegrationSettings,
   ApiKeyConfiguration,
   ExportConfiguration,
 } from '@/types/settings'
+import { apiClient } from './client'
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'
-
-// Helper function for API calls
-async function apiCall<T>(
-  endpoint: string,
-  options: RequestInit = {}
-): Promise<T> {
-  // Get token from AuthContext
-  const token = localStorage.getItem('firebase-token')
-  
-  if (!token) {
-    throw new Error('Not authenticated')
-  }
-  
-  const response = await fetch(`${API_URL}${endpoint}`, {
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`,
-      ...options.headers,
-    },
-    ...options,
-  })
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ 
-      detail: `HTTP ${response.status}: ${response.statusText}` 
-    }))
-    throw new Error(error.detail || `Request failed with status ${response.status}`)
-  }
-
-  return response.json()
-}
-
-// User Settings API
-export const userSettingsApi = {
+export class UserSettingsApi {
   /**
    * Get current user settings
    */
-  getUserSettings: (): Promise<UserSettings> =>
-    apiCall<UserSettings>('/settings/user'),
+  async getUserSettings(): Promise<UserSettings> {
+    const response = await apiClient.get<UserSettings>('/settings/user')
+    return response.data
+  }
 
   /**
    * Update user settings
    */
-  updateUserSettings: (settings: UserSettingsUpdate): Promise<UserSettings> =>
-    apiCall<UserSettings>('/settings/user', {
-      method: 'PATCH',
-      body: JSON.stringify(settings),
-    }),
+  async updateUserSettings(settings: UserSettingsUpdate): Promise<UserSettings> {
+    const response = await apiClient.patch<UserSettings>('/settings/user', settings)
+    return response.data
+  }
 
   /**
    * Reset user settings to defaults
    */
-  resetUserSettings: (): Promise<UserSettings> =>
-    apiCall<UserSettings>('/settings/user/reset', {
-      method: 'POST',
-    }),
+  async resetUserSettings(): Promise<UserSettings> {
+    const response = await apiClient.post<UserSettings>('/settings/user/reset')
+    return response.data
+  }
 }
 
-// Business Settings API
-export const businessSettingsApi = {
+export class BusinessSettingsApi {
   /**
    * Get business settings
    */
-  getBusinessSettings: (): Promise<BusinessSettings> =>
-    apiCall<BusinessSettings>('/settings/business'),
+  async getBusinessSettings(): Promise<BusinessSettings> {
+    const response = await apiClient.get<BusinessSettings>('/settings/business')
+    return response.data
+  }
 
   /**
    * Update business settings
    */
-  updateBusinessSettings: (settings: BusinessSettingsUpdate): Promise<BusinessSettings> =>
-    apiCall<BusinessSettings>('/settings/business', {
-      method: 'PATCH',
-      body: JSON.stringify(settings),
-    }),
+  async updateBusinessSettings(settings: BusinessSettingsUpdate): Promise<BusinessSettings> {
+    const response = await apiClient.patch<BusinessSettings>('/settings/business', settings)
+    return response.data
+  }
 }
 
-// Tax Configuration API
-export const taxConfigApi = {
+export class TaxConfigApi {
   /**
    * Get all tax configurations
    */
-  getTaxConfigurations: (): Promise<TaxConfiguration[]> =>
-    apiCall<TaxConfiguration[]>('/settings/tax-configurations'),
+  async getTaxConfigurations(): Promise<TaxConfiguration[]> {
+    const response = await apiClient.get<TaxConfiguration[]>('/settings/tax-configurations')
+    return response.data
+  }
 
   /**
    * Create new tax configuration
    */
-  createTaxConfiguration: (config: TaxConfigurationCreate): Promise<TaxConfiguration> =>
-    apiCall<TaxConfiguration>('/settings/tax-configurations', {
-      method: 'POST',
-      body: JSON.stringify(config),
-    }),
+  async createTaxConfiguration(config: TaxConfigurationCreate): Promise<TaxConfiguration> {
+    const response = await apiClient.post<TaxConfiguration>('/settings/tax-configurations', config)
+    return response.data
+  }
 
   /**
    * Update tax configuration
    */
-  updateTaxConfiguration: (id: string, config: TaxConfigurationUpdate): Promise<TaxConfiguration> =>
-    apiCall<TaxConfiguration>(`/settings/tax-configurations/${id}`, {
-      method: 'PATCH',
-      body: JSON.stringify(config),
-    }),
+  async updateTaxConfiguration(id: string, config: TaxConfigurationUpdate): Promise<TaxConfiguration> {
+    const response = await apiClient.patch<TaxConfiguration>(`/settings/tax-configurations/${id}`, config)
+    return response.data
+  }
 
   /**
    * Delete tax configuration
    */
-  deleteTaxConfiguration: (id: string): Promise<void> =>
-    apiCall<void>(`/settings/tax-configurations/${id}`, {
-      method: 'DELETE',
-    }),
+  async deleteTaxConfiguration(id: string): Promise<void> {
+    await apiClient.delete<void>(`/settings/tax-configurations/${id}`)
+  }
 
   /**
    * Set default tax configuration
    */
-  setDefaultTaxConfiguration: (id: string): Promise<TaxConfiguration> =>
-    apiCall<TaxConfiguration>(`/settings/tax-configurations/${id}/default`, {
-      method: 'POST',
-    }),
+  async setDefaultTaxConfiguration(id: string): Promise<TaxConfiguration> {
+    const response = await apiClient.post<TaxConfiguration>(`/settings/tax-configurations/${id}/default`)
+    return response.data
+  }
 }
 
-// Team Management API
-export const teamApi = {
+export class TeamApi {
   /**
    * Get all team members
    */
-  getTeamMembers: (): Promise<TeamMember[]> =>
-    apiCall<TeamMember[]>('/settings/team/members'),
+  async getTeamMembers(): Promise<TeamMember[]> {
+    const response = await apiClient.get<TeamMember[]>('/settings/team/members')
+    return response.data
+  }
 
   /**
    * Invite team member
    */
-  inviteTeamMember: (invitation: TeamInvitation): Promise<TeamMember> =>
-    apiCall<TeamMember>('/settings/team/invite', {
-      method: 'POST',
-      body: JSON.stringify(invitation),
-    }),
+  async inviteTeamMember(invitation: TeamInvitation): Promise<TeamMember> {
+    const response = await apiClient.post<TeamMember>('/settings/team/invite', invitation)
+    return response.data
+  }
 
   /**
    * Update team member
    */
-  updateTeamMember: (id: string, updates: Partial<TeamMember>): Promise<TeamMember> =>
-    apiCall<TeamMember>(`/settings/team/members/${id}`, {
-      method: 'PATCH',
-      body: JSON.stringify(updates),
-    }),
+  async updateTeamMember(id: string, updates: Partial<TeamMember>): Promise<TeamMember> {
+    const response = await apiClient.patch<TeamMember>(`/settings/team/members/${id}`, updates)
+    return response.data
+  }
 
   /**
    * Remove team member
    */
-  removeTeamMember: (id: string): Promise<void> =>
-    apiCall<void>(`/settings/team/members/${id}`, {
-      method: 'DELETE',
-    }),
+  async removeTeamMember(id: string): Promise<void> {
+    await apiClient.delete<void>(`/settings/team/members/${id}`)
+  }
 
   /**
    * Resend invitation
    */
-  resendInvitation: (id: string): Promise<TeamMember> =>
-    apiCall<TeamMember>(`/settings/team/members/${id}/resend`, {
-      method: 'POST',
-    }),
+  async resendInvitation(id: string): Promise<TeamMember> {
+    const response = await apiClient.post<TeamMember>(`/settings/team/members/${id}/resend`)
+    return response.data
+  }
 
   /**
    * Cancel invitation
    */
-  cancelInvitation: (id: string): Promise<void> =>
-    apiCall<void>(`/settings/team/members/${id}/cancel`, {
-      method: 'POST',
-    }),
+  async cancelInvitation(id: string): Promise<void> {
+    await apiClient.post<void>(`/settings/team/members/${id}/cancel`)
+  }
 }
 
-// Categories API
-export const categoriesApi = {
+export class CategoriesApi {
   /**
    * Get all categories
    */
-  getCategories: (): Promise<Category[]> =>
-    apiCall<{ categories: Category[] }>('/categories').then(response => response.categories),
+  async getCategories(): Promise<Category[]> {
+    const response = await apiClient.get<{ categories: Category[] }>('/categories')
+    return response.data.categories
+  }
 
   /**
    * Get categories with hierarchy
    */
-  getCategoriesHierarchy: (): Promise<CategoryWithChildren[]> =>
-    apiCall<{ categories: Category[] }>('/categories').then(response => {
-      // Build hierarchy
-      const categories = response.categories
-      const categoryMap = new Map(
-        categories.map(cat => [
-          cat.id, 
-          { ...cat, children: [] } as CategoryWithChildren
-        ])
-      )
-      const rootCategories: CategoryWithChildren[] = []
+  async getCategoriesHierarchy(): Promise<CategoryWithChildren[]> {
+    const response = await apiClient.get<{ categories: Category[] }>('/categories')
+    // Build hierarchy
+    const categories = response.data.categories
+    const categoryMap = new Map(
+      categories.map((cat: Category) => [
+        cat.id, 
+        { ...cat, children: [] } as CategoryWithChildren
+      ])
+    )
+    const rootCategories: CategoryWithChildren[] = []
 
-      // Build parent-child relationships
-      categories.forEach(category => {
-        const categoryWithChildren = categoryMap.get(category.id)!
-        if (category.parentId) {
-          const parent = categoryMap.get(category.parentId)
-          if (parent) {
-            parent.children.push(categoryWithChildren)
-          }
-        } else {
-          rootCategories.push(categoryWithChildren)
+    // Build parent-child relationships
+    categories.forEach((category: Category) => {
+      const categoryWithChildren = categoryMap.get(category.id)!
+      if (category.parentId) {
+        const parent = categoryMap.get(category.parentId)
+        if (parent) {
+          parent.children.push(categoryWithChildren)
         }
-      })
+      } else {
+        rootCategories.push(categoryWithChildren)
+      }
+    })
 
-      return rootCategories
-    }),
+    return rootCategories
+  }
 
   /**
    * Create new category
    */
-  createCategory: (category: CategoryFormData): Promise<Category> =>
-    apiCall<Category>('/categories', {
-      method: 'POST',
-      body: JSON.stringify({
-        name: category.name,
-        type: category.type,
-        color: category.color,
-        icon: category.icon,
-        parent_id: category.parentId, 
-        is_default: category.isDefault
-      }),
-    }),
+  async createCategory(category: CategoryFormData): Promise<Category> {
+    const response = await apiClient.post<Category>('/categories', {
+      name: category.name,
+      type: category.type,
+      color: category.color,
+      icon: category.icon,
+      parent_id: category.parentId, 
+      is_default: category.isDefault
+    })
+    return response.data
+  }
 
   /**
    * Update category
    */
-  updateCategory: (id: string, category: Partial<CategoryFormData>): Promise<Category> =>
-    apiCall<Category>(`/categories/${id}`, {
-      method: 'PATCH',
-      body: JSON.stringify(category),
-    }),
+  async updateCategory(id: string, category: Partial<CategoryFormData>): Promise<Category> {
+    const response = await apiClient.patch<Category>(`/categories/${id}`, category)
+    return response.data
+  }
 
   /**
    * Delete category
    */
-  deleteCategory: (id: string): Promise<void> =>
-    apiCall<void>(`/categories/${id}`, {
-      method: 'DELETE',
-    }),
+  async deleteCategory(id: string): Promise<void> {
+    await apiClient.delete<void>(`/categories/${id}`)
+  }
 
   /**
    * Move category to different parent
    */
-  moveCategory: (id: string, parentId: string | null): Promise<Category> =>
-    apiCall<Category>(`/categories/${id}/move`, {
-      method: 'POST',
-      body: JSON.stringify({ parentId }),
-    }),
+  async moveCategory(id: string, parentId: string | null): Promise<Category> {
+    const response = await apiClient.post<Category>(`/categories/${id}/move`, { parentId })
+    return response.data
+  }
 }
 
-// Integration Settings API
-export const integrationApi = {
+export class IntegrationApi {
   /**
    * Get integration settings
    */
-  getIntegrationSettings: (): Promise<IntegrationSettings> =>
-    apiCall<IntegrationSettings>('/settings/integrations'),
+  async getIntegrationSettings(): Promise<IntegrationSettings> {
+    const response = await apiClient.get<IntegrationSettings>('/settings/integrations')
+    return response.data
+  }
 
   /**
    * Create API key
    */
-  createApiKey: (name: string, service: string): Promise<ApiKeyConfiguration> =>
-    apiCall<ApiKeyConfiguration>('/settings/integrations/api-keys', {
-      method: 'POST',
-      body: JSON.stringify({ name, service }),
-    }),
+  async createApiKey(name: string, service: string): Promise<ApiKeyConfiguration> {
+    const response = await apiClient.post<ApiKeyConfiguration>('/settings/integrations/api-keys', { name, service })
+    return response.data
+  }
 
   /**
    * Delete API key
    */
-  deleteApiKey: (id: string): Promise<void> =>
-    apiCall<void>(`/settings/integrations/api-keys/${id}`, {
-      method: 'DELETE',
-    }),
+  async deleteApiKey(id: string): Promise<void> {
+    await apiClient.delete<void>(`/settings/integrations/api-keys/${id}`)
+  }
 
   /**
    * Update export settings
    */
-  updateExportSettings: (settings: Partial<ExportConfiguration>): Promise<ExportConfiguration> =>
-    apiCall<ExportConfiguration>('/settings/integrations/export', {
-      method: 'PATCH',
-      body: JSON.stringify(settings),
-    }),
+  async updateExportSettings(settings: Partial<ExportConfiguration>): Promise<ExportConfiguration> {
+    const response = await apiClient.patch<ExportConfiguration>('/settings/integrations/export', settings)
+    return response.data
+  }
 
   /**
    * Test webhook
    */
-  testWebhook: (url: string): Promise<{ success: boolean; responseTime: number }> =>
-    apiCall('/settings/integrations/webhooks/test', {
-      method: 'POST',
-      body: JSON.stringify({ url }),
-    }),
+  async testWebhook(url: string): Promise<{ success: boolean; responseTime: number }> {
+    const response = await apiClient.post<{ success: boolean; responseTime: number }>('/settings/integrations/webhooks/test', { url })
+    return response.data
+  }
 }
 
-// Data Export API
-export const dataExportApi = {
+export class DataExportApi {
   /**
    * Export data in specified format
    */
-  exportData: (format: 'csv' | 'pdf' | 'json', dateRange?: { from: string; to: string }): Promise<{ downloadUrl: string }> =>
-    apiCall('/settings/export/data', {
-      method: 'POST',
-      body: JSON.stringify({ format, dateRange }),
-    }),
+  async exportData(format: 'csv' | 'pdf' | 'json', dateRange?: { from: string; to: string }): Promise<{ downloadUrl: string }> {
+    const response = await apiClient.post<{ downloadUrl: string }>('/settings/export/data', { format, dateRange })
+    return response.data
+  }
 
   /**
    * Get export history
    */
-  getExportHistory: (): Promise<Array<{ id: string; format: string; createdAt: string; downloadUrl: string; status: string }>> =>
-    apiCall('/settings/export/history'),
+  async getExportHistory(): Promise<Array<{ id: string; format: string; createdAt: string; downloadUrl: string; status: string }>> {
+    const response = await apiClient.get<Array<{ id: string; format: string; createdAt: string; downloadUrl: string; status: string }>>('/settings/export/history')
+    return response.data
+  }
 
   /**
    * Schedule recurring export
    */
-  scheduleExport: (schedule: { frequency: string; format: string; recipients: string[] }): Promise<void> =>
-    apiCall('/settings/export/schedule', {
-      method: 'POST',
-      body: JSON.stringify(schedule),
-    }),
+  async scheduleExport(schedule: { frequency: string; format: string; recipients: string[] }): Promise<void> {
+    await apiClient.post<void>('/settings/export/schedule', schedule)
+  }
 }
 
-// Preferences API (timezone, language, etc.)
-export const preferencesApi = {
+export class PreferencesApi {
   /**
    * Get available timezones
    */
-  getTimezones: (): Promise<Array<{ value: string; label: string; offset: string; region: string }>> =>
-    apiCall('/settings/preferences/timezones'),
+  async getTimezones(): Promise<Array<{ value: string; label: string; offset: string; region: string }>> {
+    const response = await apiClient.get<Array<{ value: string; label: string; offset: string; region: string }>>('/settings/preferences/timezones')
+    return response.data
+  }
 
   /**
    * Get available languages
    */
-  getLanguages: (): Promise<Array<{ code: string; name: string; nativeName: string; flag: string }>> =>
-    apiCall('/settings/preferences/languages'),
+  async getLanguages(): Promise<Array<{ code: string; name: string; nativeName: string; flag: string }>> {
+    const response = await apiClient.get<Array<{ code: string; name: string; nativeName: string; flag: string }>>('/settings/preferences/languages')
+    return response.data
+  }
 
   /**
    * Get available currencies
    */
-  getCurrencies: (): Promise<Array<{ code: string; name: string; symbol: string; flag: string }>> =>
-    apiCall('/settings/preferences/currencies'),
+  async getCurrencies(): Promise<Array<{ code: string; name: string; symbol: string; flag: string }>> {
+    const response = await apiClient.get<Array<{ code: string; name: string; symbol: string; flag: string }>>('/settings/preferences/currencies')
+    return response.data
+  }
 }
+
+// Export singleton instances
+export const userSettingsApi = new UserSettingsApi()
+export const businessSettingsApi = new BusinessSettingsApi()
+export const taxConfigApi = new TaxConfigApi()
+export const teamApi = new TeamApi()
+export const categoriesApi = new CategoriesApi()
+export const integrationApi = new IntegrationApi()
+export const dataExportApi = new DataExportApi()
+export const preferencesApi = new PreferencesApi()
 
 // Consolidated settings API object
 export const settingsApi = {

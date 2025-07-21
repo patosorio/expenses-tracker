@@ -1,19 +1,21 @@
 'use client'
 
 import { useState, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import { Receipt, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/components/ui/use-toast'
 import { ExpensesToolbar } from '@/components/expenses/ExpensesToolbar'
 import { ExpensesTable } from '@/components/expenses/ExpensesTable'
 import { ExpensesPagination } from '@/components/expenses/expenses-pagination'
-import { useExpenses } from '@/hooks/expenses/use-expenses'
-import { useTableColumns } from '@/hooks/expenses/use-table-columns'
+import { useExpenses } from '@/hooks/expenses/UseExpenses'
+import { useTableColumns } from '@/hooks/expenses/UseTableColumns'
 import { Expense, ExpenseFilters, CreateExpensePayload } from '@/types/expenses'
-import { deleteExpense, createExpense, markExpensePaid } from '@/api/expenses'
+import { expensesApi } from '@/api/expenses'
 import { AddExpenseDialog } from '@/components/expenses/AddExpenseDialog'
 
 export default function ExpensesPage() {
+  const router = useRouter()
   const { toast } = useToast()
   const [pageSize, setPageSize] = useState(25)
   const [currentSort, setCurrentSort] = useState({ field: 'expense_date', order: 'desc' as 'asc' | 'desc' })
@@ -81,7 +83,7 @@ export default function ExpensesPage() {
   // Handle expense actions
   const handleAddExpense = useCallback(async (expenseData: CreateExpensePayload) => {
     try {
-      await createExpense(expenseData)
+      await expensesApi.createExpense(expenseData)
       refetch()
     } catch (error) {
       // Re-throw the error so the dialog can handle it
@@ -90,12 +92,12 @@ export default function ExpensesPage() {
   }, [refetch])
 
   const handleViewExpense = useCallback((expense: Expense) => {
-    // TODO: Implement view expense modal/page
     toast({
       title: "View Expense",
       description: `Viewing expense: ${expense.description}`,
     })
-  }, [toast])
+    router.push(`/expenses/${expense.id}`)
+  }, [toast, router])
 
   const handleEditExpense = useCallback((expense: Expense) => {
     // TODO: Implement edit expense modal/page
@@ -107,7 +109,7 @@ export default function ExpensesPage() {
 
   const handleDeleteExpense = useCallback(async (expense: Expense) => {
     try {
-      await deleteExpense(expense.id)
+      await expensesApi.deleteExpense(expense.id)
       toast({
         title: "Expense Deleted",
         description: `${expense.description} has been deleted successfully.`,

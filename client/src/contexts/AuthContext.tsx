@@ -1,35 +1,39 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState } from 'react';
-import { User, onAuthStateChanged, signOut } from 'firebase/auth';
+import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, User, onAuthStateChanged } from 'firebase/auth';
 import { auth } from '@/lib/firebase/config';
-import { verifyToken } from '@/api/auth';
-import { UserProfile } from '@/types/user';
 import { useRouter } from 'next/navigation';
+import { authApi } from '@/api/auth';
+import { UserProfile } from '@/types/user';
 
 interface AuthContextType {
   user: User | null;
   profile: UserProfile | null;
-  loading: boolean;
   token: string | null;
+  login: (email: string, password: string) => Promise<void>;
+  signup: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
+  isLoading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
   profile: null,
-  loading: true,
   token: null,
+  login: async () => {},
+  signup: async () => {},
   logout: async () => {},
+  isLoading: true,
 });
 
 export const useAuth = () => useContext(AuthContext);
 
-export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
+export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [loading, setLoading] = useState(true);
   const [token, setToken] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 
   useEffect(() => {
@@ -44,45 +48,63 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           localStorage.setItem('firebase-token', token);
           
           // Verify token with backend and get user profile
-          const response = await verifyToken(token);
+          const response = await authApi.verifyToken(token);
           setProfile(response.user);
         } catch (error) {
           console.error('Error verifying token:', error);
           // If token verification fails, sign out the user
-          await auth.signOut();
+          await signOut(auth);
           setUser(null);
           setToken(null);
           localStorage.removeItem('firebase-token');
-          setProfile(null);
-          router.push('/sign-in');
         }
       } else {
         setToken(null);
         localStorage.removeItem('firebase-token');
-        setProfile(null);
       }
       
-      setLoading(false);
+      setIsLoading(false);
     });
 
     return () => unsubscribe();
-  }, [router]);
+  }, []);
+
+  const login = async (email: string, password: string) => {
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+      router.push('/dashboard');
+    } catch (error) {
+      console.error('Login error:', error);
+      throw error;
+    }
+  };
+
+  const signup = async (email: string, password: string) => {
+    try {
+      await createUserWithEmailAndPassword(auth, email, password);
+      router.push('/dashboard');
+    } catch (error) {
+      console.error('Signup error:', error);
+      throw error;
+    }
+  };
 
   const logout = async () => {
     try {
       await signOut(auth);
       setUser(null);
       setToken(null);
-      localStorage.removeItem('firebase-token');
       setProfile(null);
+      localStorage.removeItem('firebase-token');
       router.push('/sign-in');
     } catch (error) {
-      console.error('Error signing out:', error);
+      console.error('Logout error:', error);
+      throw error;
     }
   };
 
   return (
-    <AuthContext.Provider value={{ user, profile, loading, token, logout }}>
+    <AuthContext.Provider value={{ user, profile, token, login, signup, logout, isLoading }}>
       {children}
     </AuthContext.Provider>
   );

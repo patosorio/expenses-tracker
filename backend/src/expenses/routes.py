@@ -185,7 +185,41 @@ async def get_expense(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Expense not found"
             )
-        return expense
+        
+        # Convert relationships to dictionaries to avoid lazy loading issues
+        expense_dict = {
+            "id": expense.id,
+            "user_id": expense.user_id,
+            "description": expense.description,
+            "expense_date": expense.expense_date,
+            "notes": expense.notes,
+            "receipt_url": expense.receipt_url,
+            "expense_type": expense.expense_type,
+            "category_id": expense.category_id,
+            "payment_method": expense.payment_method,
+            "payment_status": expense.payment_status,
+            "payment_date": expense.payment_date,
+            "invoice_number": expense.invoice_number,
+            "contact_id": expense.contact_id,
+            "payment_due_date": expense.payment_due_date,
+            "base_amount": expense.base_amount,
+            "tax_amount": expense.tax_amount,
+            "total_amount": expense.total_amount,
+            "currency": expense.currency,
+            "tax_config_id": expense.tax_config_id,
+            "tags": expense.tags,
+            "custom_fields": expense.custom_fields,
+            "created_at": expense.created_at,
+            "updated_at": expense.updated_at,
+            "is_active": expense.is_active,
+            "is_overdue": expense.is_overdue,
+            "days_overdue": expense.days_overdue,
+            "contact": None,  # We'll handle this separately if needed
+            "attachments": [],  # Empty list for now
+            "document_analysis": None  # None for now
+        }
+        
+        return ExpenseResponse(**expense_dict)
     except HTTPException:
         raise
     except Exception as e:

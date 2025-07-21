@@ -6,13 +6,15 @@ import Link from 'next/link';
 import { createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
 import { auth } from '@/lib/firebase/config';
 import { Button } from '@/components/ui/button';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { FloatingInput } from '@/components/layout/floating-input';
 import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
 import { checkPasswordStrength } from '@/lib/utils/password';
-import { createUser } from '@/api/users';
-import { verifyToken } from '@/api/auth';
+import { useAuth } from '@/contexts/AuthContext';
+import { usersApi } from '@/api/users';
+import { authApi } from '@/api/auth';
+import { useToast } from '@/components/ui/use-toast';
 
 export default function SignUp() {
   const router = useRouter();
@@ -68,7 +70,7 @@ export default function SignUp() {
       
       try {
         // Create user in backend
-        await createUser({
+        await usersApi.createUser({
           firebase_uid: user.uid,
           email: user.email!,
           full_name: name,
@@ -78,7 +80,7 @@ export default function SignUp() {
 
         // Get token and verify it works
         const token = await user.getIdToken();
-        await verifyToken(token);
+        await authApi.verifyToken(token);
 
         setSuccess('Account created successfully!');
         router.push('/dashboard');
@@ -111,7 +113,7 @@ export default function SignUp() {
 
       try {
         // Create user in backend
-        await createUser({
+        await usersApi.createUser({
           firebase_uid: user.uid,
           email: user.email!,
           full_name: user.displayName || undefined,
@@ -121,7 +123,7 @@ export default function SignUp() {
 
         // Get token and verify it works
         const token = await user.getIdToken();
-        await verifyToken(token);
+        await authApi.verifyToken(token);
 
         router.push('/dashboard');
       } catch (error: any) {
@@ -146,26 +148,33 @@ export default function SignUp() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <FloatingInput
-              label="Full name"
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              required
-            />
-            <FloatingInput
-              label="Email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
+            <div className="space-y-2">
+              <FloatingInput
+                label="Full name"
+                id="name"
+                type="text"
+                value={name}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setName(e.target.value)}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <FloatingInput
+                label="Email"
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
+                required
+              />
+            </div>
             <div className="space-y-2">
               <FloatingInput
                 label="Password"
+                id="password"
                 type="password"
                 value={password}
-                onChange={(e) => handlePasswordChange(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => handlePasswordChange(e.target.value)}
                 required
                 minLength={8}
               />
@@ -191,14 +200,17 @@ export default function SignUp() {
                 </div>
               )}
             </div>
-            <FloatingInput
-              label="Confirm password"
-              type="password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              required
-              minLength={8}
-            />
+            <div className="space-y-2">
+              <FloatingInput
+                label="Confirm password"
+                id="confirmPassword"
+                type="password"
+                value={confirmPassword}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConfirmPassword(e.target.value)}
+                required
+                minLength={8}
+              />
+            </div>
 
             <div className="flex items-center space-x-2">
               <Switch
@@ -210,13 +222,16 @@ export default function SignUp() {
             </div>
 
             {isCompany && (
-              <FloatingInput
-                label="Company name"
-                type="text"
-                value={companyName}
-                onChange={(e) => setCompanyName(e.target.value)}
-                required={isCompany}
-              />
+              <div className="space-y-2">
+                <FloatingInput
+                  label="Company name"
+                  id="companyName"
+                  type="text"
+                  value={companyName}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCompanyName(e.target.value)}
+                  required={isCompany}
+                />
+              </div>
             )}
 
             {error && (

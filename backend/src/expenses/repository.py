@@ -38,8 +38,17 @@ class ExpenseRepository:
 
     async def get_by_id(self, user_id: str, expense_id: uuid.UUID) -> Optional[Expense]:
         """Get expense by ID with full relationships"""
+        from sqlalchemy.orm import selectinload
+        
         result = await self.db.execute(
             select(Expense)
+            .options(
+                selectinload(Expense.attachments),
+                selectinload(Expense.document_analysis),
+                selectinload(Expense.category),
+                selectinload(Expense.contact),
+                selectinload(Expense.tax_config)
+            )
             .where(and_(Expense.id == expense_id, Expense.user_id == user_id, Expense.is_active == True))
         )
         expense = result.scalar_one_or_none()

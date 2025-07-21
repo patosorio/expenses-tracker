@@ -1,14 +1,14 @@
 "use client"
 
-import type React from "react"
+import { useState } from 'react'
+import Link from 'next/link'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { CheckCircle } from 'lucide-react'
+import { FloatingInput } from '@/components/layout/floating-input'
+import { authApi } from '@/api/auth'
+import { useToast } from '@/components/ui/use-toast'
 
-import { useState } from "react"
-import Link from "next/link"
-import { resetPassword } from "@/api/auth"
-import { FloatingInput } from "@/components/layout/floating-input"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { CheckCircle } from "lucide-react"
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("")
@@ -22,7 +22,7 @@ export default function ForgotPasswordPage() {
     setError("")
 
     try {
-      await resetPassword(email)
+      await authApi.resetPassword(email)
       setSuccess(true)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to send reset email")
@@ -61,13 +61,15 @@ export default function ForgotPasswordPage() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <FloatingInput
-              label="Email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
+            <div className="space-y-2">
+              <FloatingInput
+                label="Email"
+                type="email"
+                value={email}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
+                required
+              />
+            </div>
 
             {error && <p className="text-sm text-destructive">{error}</p>}
 
