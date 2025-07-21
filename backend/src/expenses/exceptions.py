@@ -1,41 +1,42 @@
 # Expense-specific exceptions
+from core.exceptions import BaseNotFoundError, BaseValidationError, BaseBadRequestError
 
-class ExpenseNotFoundError(Exception):
+class ExpenseNotFoundError(BaseNotFoundError):
     """Raised when an expense is not found in the database"""
     pass
 
-class ExpenseValidationError(Exception):
+class ExpenseValidationError(BaseValidationError):
     """Raised when expense data validation fails"""
     pass
 
-class ExpenseAlreadyExistsError(Exception):
+class ExpenseAlreadyExistsError(BaseBadRequestError):
     """Raised when trying to create an expense that already exists"""
     pass
 
-class InvalidExpenseTypeError(Exception):
+class InvalidExpenseTypeError(BaseBadRequestError):
     """Raised when expense type is invalid for the operation"""
     pass
 
-class InvalidPaymentStatusError(Exception):
+class InvalidPaymentStatusError(BaseBadRequestError):
     """Raised when payment status transition is invalid"""
     pass
 
-class DocumentAnalysisNotFoundError(Exception):
+class DocumentAnalysisNotFoundError(BaseNotFoundError):
     """Raised when document analysis is not found"""
     pass
 
-class AttachmentNotFoundError(Exception):
+class AttachmentNotFoundError(BaseNotFoundError):
     """Raised when expense attachment is not found"""
     pass
 
-class InvalidTaxCalculationError(Exception):
+class InvalidTaxCalculationError(BaseBadRequestError):
     """Raised when tax calculation fails"""
     pass
 
-class ExpenseUpdateError(Exception):
+class ExpenseUpdateError(BaseBadRequestError):
     """Raised when expense update operation fails"""
     pass
 
-class ExpenseDeleteError(Exception):
+class ExpenseDeleteError(BaseBadRequestError):
     """Raised when expense deletion fails"""
     pass 

@@ -1,10 +1,23 @@
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi import Request, HTTPException
+from fastapi.responses import JSONResponse
 
 from .core.api import api_router
 from .core.config import settings
 from .core.database import Base, engine, init_db
 from .core.firebase.auth import initialize_firebase
+from .core.exceptions import (
+    BaseNotFoundError,
+    BaseBadRequestError,
+    BaseValidationError,
+    AppBaseException
+)
+from .core.exceptions_handler import setup_exception_handlers
+
+import logging
+logger = logging.getLogger(__name__)
 
 # Import models to register them with SQLAlchemy
 from .users.models import User, UserSettings
@@ -22,6 +35,9 @@ app = FastAPI(
     description="API for tracking expenses with Firebase authentication",
     version="1.0.0",
 )
+
+setup_exception_handlers(app)
+SHOW_ERRORS = os.getenv("ENV", "development") == "development"
 
 @app.on_event("startup")
 async def startup_event():
@@ -58,6 +74,7 @@ app.include_router(team_router, prefix="/api/v1/team", tags=["Team"])
 app.include_router(expenses_router, prefix="/api/v1/expenses", tags=["Expenses"])
 
 # app.include_router(api_router, prefix="/api/v1")  # Temporarily commented out
+
 
 @app.get("/test-cors")
 async def test_cors():

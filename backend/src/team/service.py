@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 class TeamService:
     def __init__(self, db: AsyncSession):
         self.db = db
-        self.team_repo = TeamRepository(self.db)
+        self.team_repo = TeamRepository(db)
     
     async def get_team_members(
         self,

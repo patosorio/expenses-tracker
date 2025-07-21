@@ -34,8 +34,8 @@ logger = logging.getLogger(__name__)
 
 class ExpenseService:
     def __init__(self, db: AsyncSession = None):
-        self.db = db or next(get_db())
-        self.expense_repo = ExpenseRepository(self.db)
+        self.db = db
+        self.expense_repo = ExpenseRepository(db)
 
     # Core CRUD Operations
     async def create_simple_expense(

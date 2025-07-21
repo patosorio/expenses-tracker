@@ -254,7 +254,7 @@ class ExpenseResponse(ExpenseBase):
     is_active: bool
     
     # Related objects - made optional to avoid async loading issues
-    contact: Optional[Dict[str, Any]] = None  # Using Dict instead of ContactResponse to avoid circular import
+    contact: Optional[Dict[str, Any]] = None
     attachments: Optional[List[AttachmentResponse]] = None
     document_analysis: Optional[DocumentAnalysisResponse] = None
 

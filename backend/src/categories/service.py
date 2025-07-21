@@ -21,8 +21,8 @@ logger = logging.getLogger(__name__)
 
 class CategoryService:
     def __init__(self, db: AsyncSession = None):
-        self.db = db or next(get_db())
-        self.category_repo = CategoryRepository(self.db)
+        self.db = db
+        self.category_repo = CategoryRepository(db)
 
     async def create_category(self, user_id: str, category_data: CategoryCreate) -> Category:
         """Create a new category with validation"""

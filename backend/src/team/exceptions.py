@@ -1,53 +1,54 @@
 # Team module exceptions
+from core.exceptions import BaseNotFoundError, BaseValidationError, BaseBadRequestError
 
-class TeamMemberNotFoundError(Exception):
+class TeamMemberNotFoundError(BaseNotFoundError):
     """Raised when a team member is not found"""
     pass
 
-class TeamMemberValidationError(Exception):
+class TeamMemberValidationError(BaseValidationError):
     """Raised when team member validation fails"""
     pass
 
-class TeamMemberAlreadyExistsError(Exception):
+class TeamMemberAlreadyExistsError(BaseBadRequestError):
     """Raised when a team member already exists"""
     pass
 
-class TeamInvitationNotFoundError(Exception):
+class TeamInvitationNotFoundError(BaseNotFoundError):
     """Raised when a team invitation is not found"""
     pass
 
-class TeamInvitationValidationError(Exception):
+class TeamInvitationValidationError(BaseValidationError):
     """Raised when team invitation validation fails"""
     pass
 
-class TeamInvitationExpiredError(Exception):
+class TeamInvitationExpiredError(BaseBadRequestError):
     """Raised when a team invitation has expired"""
     pass
 
-class DuplicateTeamMemberError(Exception):
+class DuplicateTeamMemberError(BaseBadRequestError):
     """Raised when trying to invite a user who is already a team member"""
     pass
 
-class TeamValidationError(Exception):
+class TeamValidationError(BaseValidationError):
     """Raised when team data validation fails"""
     pass
 
-class TeamMemberUpdateError(Exception):
+class TeamMemberUpdateError(BaseBadRequestError):
     """Raised when team member update fails"""
     pass
 
-class TeamMemberDeleteError(Exception):
+class TeamMemberDeleteError(BaseBadRequestError):
     """Raised when team member deletion fails"""
     pass
 
-class InvalidTeamRoleError(Exception):
+class InvalidTeamRoleError(BaseBadRequestError):
     """Raised when an invalid team role is provided"""
     pass
 
-class InvalidTeamPermissionsError(Exception):
+class InvalidTeamPermissionsError(BaseBadRequestError):
     """Raised when invalid team permissions are provided"""
     pass
 
-class TeamInvitationError(Exception):
+class TeamInvitationError(BaseBadRequestError):
     """Raised when team invitation creation fails"""
     pass 

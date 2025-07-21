@@ -1,37 +1,39 @@
 # Category-specific exceptions
 
-class CategoryNotFoundError(Exception):
+from core.exceptions import BaseNotFoundError, BaseValidationError, BaseBadRequestError
+
+class CategoryNotFoundError(BaseNotFoundError):
     """Raised when a category is not found in the database"""
     pass
 
-class CategoryValidationError(Exception):
+class CategoryValidationError(BaseValidationError):
     """Raised when category data validation fails"""
     pass
 
-class CategoryAlreadyExistsError(Exception):
+class CategoryAlreadyExistsError(BaseBadRequestError):
     """Raised when trying to create a category with a name that already exists at the same level"""
     pass
 
-class InvalidCategoryParentError(Exception):
+class InvalidCategoryParentError(BaseBadRequestError):
     """Raised when trying to set an invalid parent for a category"""
     pass
 
-class CategoryTypeConflictError(Exception):
+class CategoryTypeConflictError(BaseBadRequestError):
     """Raised when parent and child categories have different types"""
     pass
 
-class CircularCategoryReferenceError(Exception):
+class CircularCategoryReferenceError(BaseBadRequestError):
     """Raised when trying to create a circular parent-child relationship"""
     pass
 
-class CategoryDeleteError(Exception):
+class CategoryDeleteError(BaseBadRequestError):
     """Raised when category deletion fails"""
     pass
 
-class CategoryUpdateError(Exception):
+class CategoryUpdateError(BaseBadRequestError):
     """Raised when category update fails"""
     pass
 
-class InvalidCategoryHierarchyError(Exception):
+class InvalidCategoryHierarchyError(BaseBadRequestError):
     """Raised when category hierarchy is invalid"""
     pass 

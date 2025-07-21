@@ -71,3 +71,7 @@ htmlcov/
 
 # Production
 .env.production
+
+# Others
+smartbudget360_action_plan.md
+smartbudget360_dev_plan.md

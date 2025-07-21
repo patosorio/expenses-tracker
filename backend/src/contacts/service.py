@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 class ContactService:
     def __init__(self, db: AsyncSession):
         self.db = db
-        self.contact_repo = ContactRepository(self.db)
+        self.contact_repo = ContactRepository(db)
 
     async def create_contact(self, contact_data: ContactCreate, user_id: str) -> ContactResponse:
         """Create a new contact"""
