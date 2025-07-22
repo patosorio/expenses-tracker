@@ -1,54 +1,129 @@
 # Team module exceptions
-from core.exceptions import BaseNotFoundError, BaseValidationError, BaseBadRequestError
+from ..core.shared.exceptions import (
+    NotFoundError,
+    ValidationError,
+    BadRequestError,
+    ConflictError,
+    UnauthorizedError,
+    ExternalServiceError
+)
 
-class TeamMemberNotFoundError(BaseNotFoundError):
-    """Raised when a team member is not found"""
-    pass
 
-class TeamMemberValidationError(BaseValidationError):
-    """Raised when team member validation fails"""
-    pass
+class TeamMemberNotFoundError(NotFoundError):
+    """Team member not found in organization."""
+    detail: str = "Team member not found"
+    error_code: str = "TEAM_MEMBER_NOT_FOUND"
 
-class TeamMemberAlreadyExistsError(BaseBadRequestError):
-    """Raised when a team member already exists"""
-    pass
 
-class TeamInvitationNotFoundError(BaseNotFoundError):
-    """Raised when a team invitation is not found"""
-    pass
+class TeamMemberValidationError(ValidationError):
+    """Team member data validation failed."""
+    detail: str = "Invalid team member data"
+    error_code: str = "TEAM_MEMBER_VALIDATION_FAILED"
 
-class TeamInvitationValidationError(BaseValidationError):
-    """Raised when team invitation validation fails"""
-    pass
 
-class TeamInvitationExpiredError(BaseBadRequestError):
-    """Raised when a team invitation has expired"""
-    pass
+class TeamMemberAlreadyExistsError(ConflictError):
+    """Team member with this email already exists."""
+    detail: str = "Team member already exists"
+    error_code: str = "TEAM_MEMBER_ALREADY_EXISTS"
 
-class DuplicateTeamMemberError(BaseBadRequestError):
-    """Raised when trying to invite a user who is already a team member"""
-    pass
 
-class TeamValidationError(BaseValidationError):
-    """Raised when team data validation fails"""
-    pass
+class DuplicateTeamMemberError(ConflictError):
+    """User is already a team member or invited."""
+    detail: str = "User is already a team member"
+    error_code: str = "DUPLICATE_TEAM_MEMBER"
 
-class TeamMemberUpdateError(BaseBadRequestError):
-    """Raised when team member update fails"""
-    pass
 
-class TeamMemberDeleteError(BaseBadRequestError):
-    """Raised when team member deletion fails"""
-    pass
+class TeamInvitationNotFoundError(NotFoundError):
+    """Team invitation not found or invalid."""
+    detail: str = "Team invitation not found"
+    error_code: str = "TEAM_INVITATION_NOT_FOUND"
 
-class InvalidTeamRoleError(BaseBadRequestError):
-    """Raised when an invalid team role is provided"""
-    pass
 
-class InvalidTeamPermissionsError(BaseBadRequestError):
-    """Raised when invalid team permissions are provided"""
-    pass
+class TeamInvitationValidationError(ValidationError):
+    """Team invitation data validation failed."""
+    detail: str = "Invalid invitation data"
+    error_code: str = "TEAM_INVITATION_VALIDATION_FAILED"
 
-class TeamInvitationError(BaseBadRequestError):
-    """Raised when team invitation creation fails"""
-    pass 
+
+class TeamInvitationExpiredError(BadRequestError):
+    """Team invitation has expired or is no longer valid."""
+    detail: str = "Team invitation has expired"
+    error_code: str = "TEAM_INVITATION_EXPIRED"
+
+
+class TeamInvitationError(BadRequestError):
+    """Failed to create or process team invitation."""
+    detail: str = "Team invitation failed"
+    error_code: str = "TEAM_INVITATION_FAILED"
+
+
+class TeamValidationError(ValidationError):
+    """Team data validation failed."""
+    detail: str = "Invalid team data"
+    error_code: str = "TEAM_VALIDATION_FAILED"
+
+
+class TeamMemberUpdateError(BadRequestError):
+    """Failed to update team member."""
+    detail: str = "Failed to update team member"
+    error_code: str = "TEAM_MEMBER_UPDATE_FAILED"
+
+
+class TeamMemberDeleteError(BadRequestError):
+    """Failed to remove team member."""
+    detail: str = "Failed to remove team member"
+    error_code: str = "TEAM_MEMBER_DELETE_FAILED"
+
+
+class InvalidTeamRoleError(ValidationError):
+    """Invalid team role specified."""
+    detail: str = "Invalid team role"
+    error_code: str = "INVALID_TEAM_ROLE"
+
+
+class InvalidTeamPermissionsError(ValidationError):
+    """Invalid team permissions specified."""
+    detail: str = "Invalid team permissions"
+    error_code: str = "INVALID_TEAM_PERMISSIONS"
+
+
+class TeamSizeLimitExceededError(BadRequestError):
+    """Organization has reached maximum team size."""
+    detail: str = "Team size limit exceeded"
+    error_code: str = "TEAM_SIZE_LIMIT_EXCEEDED"
+
+
+class InsufficientTeamPermissionsError(UnauthorizedError):
+    """User lacks permissions for this team operation."""
+    detail: str = "Insufficient team permissions"
+    error_code: str = "INSUFFICIENT_TEAM_PERMISSIONS"
+
+
+class TeamMemberSelfRemovalError(BadRequestError):
+    """Team owner cannot remove themselves."""
+    detail: str = "Cannot remove yourself from team"
+    error_code: str = "TEAM_MEMBER_SELF_REMOVAL"
+
+
+class InvalidInvitationTokenError(ValidationError):
+    """Invalid or malformed invitation token."""
+    detail: str = "Invalid invitation token"
+    error_code: str = "INVALID_INVITATION_TOKEN"
+
+
+class TeamEmailDeliveryError(ExternalServiceError):
+    """Failed to send team invitation email."""
+    detail: str = "Failed to send invitation email"
+    error_code: str = "TEAM_EMAIL_DELIVERY_FAILED"
+
+
+class TeamRoleHierarchyError(BadRequestError):
+    """Invalid role hierarchy operation."""
+    detail: str = "Invalid role hierarchy"
+    error_code: str = "TEAM_ROLE_HIERARCHY_ERROR"
+
+
+class TeamDepartmentNotFoundError(NotFoundError):
+    """Team department not found."""
+    detail: str = "Department not found"
+    error_code: str = "TEAM_DEPARTMENT_NOT_FOUND"

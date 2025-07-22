@@ -18,7 +18,7 @@ from .exceptions import (
     InvalidUserDataError,
     AccountDeactivatedError
 )
-from core.exceptions import ValidationError, InternalServerError
+from ..core.shared.exceptions import ValidationError, InternalServerError
 
 logger = logging.getLogger(__name__)
 

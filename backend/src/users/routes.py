@@ -26,7 +26,7 @@ from .exceptions import (
     UserNotFoundError, UserAlreadyExistsError, InvalidUserDataError,
     AccountDeactivatedError
 )
-from core.exceptions import ValidationError, ForbiddenError
+from ..core.shared.exceptions import ValidationError, ForbiddenError
 
 logger = logging.getLogger(__name__)
 router = APIRouter()

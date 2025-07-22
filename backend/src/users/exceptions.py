@@ -1,5 +1,5 @@
 # Users module exceptions
-from core.exceptions import (
+from ..core.shared.exceptions import (
     NotFoundError, 
     ValidationError, 
     ConflictError, 
