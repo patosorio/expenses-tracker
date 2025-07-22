@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional, List, Dict, Any, Union, TYPE_CHECKING, Annotated
+from typing import Optional, List, Dict, Any, Union
 from uuid import UUID
 from decimal import Decimal
 
@@ -243,6 +243,19 @@ class DocumentAnalysisResponse(DocumentAnalysisBase):
     model_config = ConfigDict(from_attributes=True)
 
 
+# Contact Response Schema (inline to avoid circular imports)
+class ContactResponseInline(BaseModel):
+    """Inline contact response to avoid circular imports"""
+    id: UUID
+    name: str
+    contact_type: str
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    tax_number: Optional[str] = None
+    
+    model_config = ConfigDict(from_attributes=True)
+
+
 class ExpenseResponse(ExpenseBase):
     """Complete expense response with relationships"""
     id: UUID
@@ -253,8 +266,8 @@ class ExpenseResponse(ExpenseBase):
     updated_at: Optional[datetime] = None
     is_active: bool
     
-    # Related objects - made optional to avoid async loading issues
-    contact: Optional[Dict[str, Any]] = None  # Using Dict instead of ContactResponse to avoid circular import
+    # Using inline schemas to avoid circular imports
+    contact: Optional[ContactResponseInline] = None
     attachments: Optional[List[AttachmentResponse]] = None
     document_analysis: Optional[DocumentAnalysisResponse] = None
 

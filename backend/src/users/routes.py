@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, Query, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional
 import math
+import logging
 
 from .models import User, UserRole, UserStatus
 from .schemas import (
@@ -20,31 +21,28 @@ from .schemas import (
 from .service import UserService
 from ..auth.dependencies import get_current_user
 from ..core.database import get_db
-from .exceptions import DuplicateEmailError
 
+from .exceptions import (
+    UserNotFoundError, UserAlreadyExistsError, InvalidUserDataError,
+    AccountDeactivatedError
+)
+from ..core.shared.exceptions import ValidationError, ForbiddenError
+
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
-@router.post("/", response_model=UserResponse)
+
+@router.post("/", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 async def create_user(
     user_data: UserCreate,
     db: AsyncSession = Depends(get_db)
 ):
     """Create a new user"""
-    try:
-        user_service = UserService(db)
-        user = await user_service.create_user(user_data)
-        return user
-    except DuplicateEmailError as e:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=str(e)
-        )
-    except Exception as e:
-        print(f"Error creating user: {str(e)}")  # For debugging
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Failed to create user: {str(e)}"
-        )
+    user_service = UserService(db)
+    created_user = await user_service.create_user(user_data)
+    logger.info(f"User created successfully: {created_user.id}")
+    return created_user
+
 
 @router.get("/me", response_model=UserResponse)
 async def get_current_user_profile(
@@ -53,6 +51,7 @@ async def get_current_user_profile(
     """Get current user profile"""
     return current_user
 
+
 @router.put("/me", response_model=UserResponse)
 async def update_current_user_profile(
     user_update: UserUpdate,
@@ -60,15 +59,11 @@ async def update_current_user_profile(
     db: AsyncSession = Depends(get_db)
 ):
     """Update current user profile"""
-    try:
-        user_service = UserService(db)
-        updated_user = await user_service.update_user(current_user.id, user_update)
-        return updated_user
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e)
-        )
+    user_service = UserService(db)
+    updated_user = await user_service.update_user(current_user.id, user_update)
+    logger.info(f"User profile updated successfully: {updated_user.id}")
+    return updated_user
+
 
 @router.get("/", response_model=UserListResponse)
 async def get_users(
@@ -80,11 +75,11 @@ async def get_users(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    """Get users with filtering and pagination (Admin only)"""
+    """Get users with filtering and pagination (Admin/Manager only)"""
     if current_user.role not in [UserRole.ADMIN, UserRole.MANAGER]:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Not enough permissions"
+        raise ForbiddenError(
+            detail="Insufficient permissions to access user list",
+            context={"required_roles": ["ADMIN", "MANAGER"], "user_role": current_user.role}
         )
     
     user_service = UserService(db)
@@ -97,12 +92,13 @@ async def get_users(
     )
     
     return UserListResponse(
-        users=[UserResponse.from_orm(user) for user in users],
+        users=[UserResponse.model_validate(user) for user in users],
         total=total,
         page=skip // limit + 1,
         per_page=limit,
         pages=math.ceil(total / limit)
     )
+
 
 @router.get("/{user_id}", response_model=UserResponse)
 async def get_user(
@@ -112,20 +108,16 @@ async def get_user(
 ):
     """Get user by ID (Admin/Manager only or own profile)"""
     if current_user.id != user_id and current_user.role not in [UserRole.ADMIN, UserRole.MANAGER]:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Not enough permissions"
+        raise ForbiddenError(
+            detail="Insufficient permissions to access this user profile",
+            context={"requested_user_id": user_id, "current_user_role": current_user.role}
         )
     
     user_service = UserService(db)
     user = await user_service.get_user_by_id(user_id)
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
-        )
-    
+    logger.info(f"User retrieved successfully: {user_id}")
     return user
+
 
 @router.put("/{user_id}", response_model=UserResponse)
 async def update_user(
@@ -136,20 +128,16 @@ async def update_user(
 ):
     """Update user (Admin only or own profile)"""
     if current_user.id != user_id and current_user.role != UserRole.ADMIN:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Not enough permissions"
+        raise ForbiddenError(
+            detail="Insufficient permissions to update this user",
+            context={"target_user_id": user_id, "current_user_role": current_user.role}
         )
     
-    try:
-        user_service = UserService(db)
-        updated_user = await user_service.update_user(user_id, user_update)
-        return updated_user
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e)
-        )
+    user_service = UserService(db)
+    updated_user = await user_service.update_user(user_id, user_update)
+    logger.info(f"User updated successfully: {user_id}")
+    return updated_user
+
 
 @router.delete("/{user_id}")
 async def deactivate_user(
@@ -159,20 +147,21 @@ async def deactivate_user(
 ):
     """Deactivate user (Admin only)"""
     if current_user.role != UserRole.ADMIN:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Not enough permissions"
+        raise ForbiddenError(
+            detail="Insufficient permissions to deactivate user",
+            context={"target_user_id": user_id, "current_user_role": current_user.role}
         )
     
-    try:
-        user_service = UserService(db)
-        await user_service.deactivate_user(user_id)
-        return {"message": "User deactivated successfully"}
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e)
+    if current_user.id == user_id:
+        raise ValidationError(
+            detail="Cannot deactivate own account",
+            context={"user_id": user_id}
         )
+    
+    user_service = UserService(db)
+    await user_service.deactivate_user(user_id)
+    return {"message": "User deactivated successfully", "user_id": user_id}
+
 
 @router.get("/stats/overview", response_model=UserStatsResponse)
 async def get_user_stats(
@@ -181,16 +170,18 @@ async def get_user_stats(
 ):
     """Get user statistics (Admin/Manager only)"""
     if current_user.role not in [UserRole.ADMIN, UserRole.MANAGER]:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Not enough permissions"
+        raise ForbiddenError(
+            detail="Insufficient permissions to access user statistics",
+            context={"required_roles": ["ADMIN", "MANAGER"], "user_role": current_user.role}
         )
     
     user_service = UserService(db)
-    return await user_service.get_user_stats()
-
+    stats = await user_service.get_user_stats()
+    logger.info("User statistics retrieved successfully")
+    return stats
 
 # User Settings Routes
+
 
 @router.get("/me/settings", response_model=UserSettingsResponse)
 async def get_user_settings(
@@ -198,15 +189,10 @@ async def get_user_settings(
     db: AsyncSession = Depends(get_db)
 ):
     """Get current user's settings and preferences"""
-    try:
-        user_service = UserService(db)
-        settings = await user_service.get_user_settings(current_user.id)
-        return settings
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get user settings: {str(e)}"
-        )
+    user_service = UserService(db)
+    settings = await user_service.get_user_settings(current_user.id)
+    return settings
+
 
 @router.put("/me/settings", response_model=UserSettingsResponse)
 async def update_user_settings(
@@ -215,49 +201,34 @@ async def update_user_settings(
     db: AsyncSession = Depends(get_db)
 ):
     """Update user settings and preferences"""
-    try:
-        user_service = UserService(db)
-        updated_settings = await user_service.update_user_settings(current_user.id, settings_data)
-        return updated_settings
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to update user settings: {str(e)}"
-        )
+    user_service = UserService(db)
+    updated_settings = await user_service.update_user_settings(current_user.id, settings_data)
+    return updated_settings
 
-@router.put("/me/notifications", response_model=UserSettingsResponse)
-async def update_notification_settings(
+
+@router.put("/me/settings/notifications", response_model=UserSettingsResponse)
+async def update_notification_preferences(
     notification_data: NotificationSettingsUpdate,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    """Update notification preferences only"""
-    try:
-        user_service = UserService(db)
-        updated_settings = await user_service.update_notification_settings(current_user.id, notification_data)
-        return updated_settings
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to update notification settings: {str(e)}"
-        )
+    """Update notification preferences with specialized validation"""
+    user_service = UserService(db)
+    updated_settings = await user_service.update_notification_preferences(current_user.id, notification_data)
+    return updated_settings
 
-@router.put("/me/preferences", response_model=UserSettingsResponse)
-async def update_user_preferences(
+
+@router.put("/me/settings/preferences", response_model=UserSettingsResponse)
+async def update_display_preferences(
     preferences_data: UserPreferencesUpdate,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    """Update user preferences only (non-notification settings)"""
-    try:
-        user_service = UserService(db)
-        updated_settings = await user_service.update_user_preferences(current_user.id, preferences_data)
-        return updated_settings
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to update user preferences: {str(e)}"
-        )
+    """Update display and UI preferences with specialized validation"""
+    user_service = UserService(db)
+    updated_settings = await user_service.update_display_preferences(current_user.id, preferences_data)
+    return updated_settings
+
 
 @router.post("/me/settings/reset", response_model=UserSettingsResponse)
 async def reset_user_settings(
@@ -265,65 +236,51 @@ async def reset_user_settings(
     db: AsyncSession = Depends(get_db)
 ):
     """Reset user settings to default values"""
-    try:
-        user_service = UserService(db)
-        reset_settings = await user_service.reset_settings_to_default(current_user.id)
-        return reset_settings
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to reset user settings: {str(e)}"
-        )
+    user_service = UserService(db)
+    reset_settings = await user_service.reset_settings_to_default(current_user.id)
+    return reset_settings
 
-@router.get("/me/preferences", response_model=UserPreferences)
+# Convenience endpoints for specific setting groups
+
+
+@router.get("/me/settings/preferences", response_model=UserPreferences)
 async def get_user_preferences(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """Get only user preferences (for quick access)"""
-    try:
-        user_service = UserService(db)
-        settings = await user_service.get_user_settings(current_user.id)
-        
-        return UserPreferences(
-            currency=settings.currency,
-            date_format=settings.date_format,
-            time_format=settings.time_format,
-            week_start=settings.week_start,
-            theme=settings.theme,
-            fiscal_year_start=settings.fiscal_year_start,
-            default_export_format=settings.default_export_format,
-            include_attachments=settings.include_attachments
-        )
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get user preferences: {str(e)}"
-        )
+    user_service = UserService(db)
+    settings = await user_service.get_user_settings(current_user.id)
+    
+    return UserPreferences(
+        currency=settings.currency,
+        date_format=settings.date_format,
+        time_format=settings.time_format,
+        week_start=settings.week_start,
+        theme=settings.theme,
+        fiscal_year_start=settings.fiscal_year_start,
+        default_export_format=settings.default_export_format,
+        include_attachments=settings.include_attachments
+    )
 
-@router.get("/me/notifications", response_model=NotificationSettings)
+
+@router.get("/me/settings/notifications", response_model=NotificationSettings)
 async def get_notification_settings(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """Get only notification settings (for quick access)"""
-    try:
-        user_service = UserService(db)
-        settings = await user_service.get_user_settings(current_user.id)
-        
-        return NotificationSettings(
-            email_notifications=settings.email_notifications,
-            push_notifications=settings.push_notifications,
-            bill_reminders=settings.bill_reminders,
-            weekly_reports=settings.weekly_reports,
-            overdue_invoices=settings.overdue_invoices,
-            team_updates=settings.team_updates,
-            marketing_emails=settings.marketing_emails,
-            expense_summaries=settings.expense_summaries,
-            budget_alerts=settings.budget_alerts
-        )
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get notification settings: {str(e)}"
-        )
+    user_service = UserService(db)
+    settings = await user_service.get_user_settings(current_user.id)
+    
+    return NotificationSettings(
+        email_notifications=settings.email_notifications,
+        push_notifications=settings.push_notifications,
+        bill_reminders=settings.bill_reminders,
+        weekly_reports=settings.weekly_reports,
+        overdue_invoices=settings.overdue_invoices,
+        team_updates=settings.team_updates,
+        marketing_emails=settings.marketing_emails,
+        expense_summaries=settings.expense_summaries,
+        budget_alerts=settings.budget_alerts
+    )

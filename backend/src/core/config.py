@@ -6,7 +6,7 @@ class Settings(BaseSettings):
     API_HOST: str = "0.0.0.0"
     API_PORT: int = 8000
     DEBUG: bool = True
-    ENVIRONMENT: str = "development"
+    ENV: str = "development"
 
     # Security
     SECRET_KEY: str

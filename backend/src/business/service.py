@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 class BusinessService:
     def __init__(self, db: AsyncSession):
         self.db = db
-        self.business_repo = BusinessRepository(self.db)
+        self.business_repo = BusinessRepository(db)
     
     # Business Settings Methods
     async def get_business_settings(self, user_id: str) -> BusinessSettings:

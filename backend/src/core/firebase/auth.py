@@ -4,6 +4,7 @@ import firebase_admin
 from firebase_admin import credentials, auth
 
 from ..config import settings
+from ..shared.exceptions import UnauthorizedError
 
 def initialize_firebase():
     """Initialize Firebase Admin SDK"""
@@ -17,5 +18,8 @@ async def verify_firebase_token(token: str) -> dict:
         decoded_token = auth.verify_id_token(token)
         return decoded_token
     except Exception as e:
-        raise ValueError(f"Invalid token: {str(e)}")
+        raise UnauthorizedError(
+            detail="Invalid or expired authentication token.",
+            context={"original_error": str(e)}
+        )
     
