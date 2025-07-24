@@ -1,12 +1,13 @@
+# backend/src/categories/service.py
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import Optional, List, Tuple, Dict, Any
+from typing import Optional, List, Dict, Any
 from uuid import UUID
-import re
 import logging
+import re
 
 from .models import Category, CategoryType
 from .repository import CategoryRepository
-from .schemas import *
+from .schemas import CategoryHierarchy, CategoryPath, CategoryStatsResponse
 from .exceptions import *
 from ..core.shared.base_service import BaseService
 from ..core.shared.exceptions import ValidationError, InternalServerError
@@ -20,144 +21,37 @@ MAX_CATEGORY_NAME_LENGTH = 100
 
 class CategoryService(BaseService[Category, CategoryRepository]):
     """Category service with business logic extending BaseService."""
+    
     def __init__(self, db: AsyncSession):
         super().__init__(db, CategoryRepository, Category)
 
-    async def create_category(
-            self,
-            user_id: str,
-            category_data: CategoryCreate
-    ) -> Category:
-        """Create a new category with validation"""
-        try:
-            # Convert Pydantic model to dict for processing
-            data = category_data.model_dump()
-            
-            # Pre-create validation
-            await self._pre_create_validation(data, user_id)
-            
-            # Create category
-            category = await self.create(data, user_id)
-            
-            # Post-create actions
-            # TODO: await self._post_create_actions(category, user_id)
-            
-            logger.info(f"Category created successfully: {category.id} for user {user_id}")
-            return category
-            
-        except (ValidationError, CategoryValidationError, CategoryAlreadyExistsError, 
-                InvalidCategoryParentError, CategoryTypeConflictError, 
-                CategoryDepthLimitExceededError):
-            raise
-        
-        except Exception as e:
-            logger.error(f"Unexpected error creating category for user {user_id}: {str(e)}")
-            raise InternalServerError(
-                detail="Failed to create category due to internal error",
-                context={"user_id": user_id, "original_error": str(e)}
-            )
-
-    async def update_category(
-            self,
-            category_id: UUID, 
-            user_id: str, 
-            category_data: CategoryUpdate
-    ) -> Category:
-        """Update category with validation."""
-        try:
-            # Get existing category
-            category = await self.get_by_id_or_raise(category_id, user_id)
-            
-            # Convert update data to dict
-            update_data = category_data.model_dump(exclude_unset=True)
-            
-            # Pre-update validation
-            #TODO: await self._pre_update_validation(category, update_data, user_id)
-            
-            # Update category
-            updated_category = await self.update(category_id, update_data, user_id)
-            
-            # Post-update actions
-            # TODO: await self._post_update_actions(updated_category, user_id)
-            
-            logger.info(f"Category updated successfully: {category_id}")
-            return updated_category
-            
-        except (ValidationError, CategoryValidationError, CategoryNotFoundError):
-            raise
-
-        except Exception as e:
-            logger.error(f"Unexpected error updating category {category_id}: {str(e)}")
-            raise InternalServerError(
-                detail="Failed to update category",
-                context={"category_id": str(category_id), "user_id": user_id}
-            )
-        
-    async def delete_category(
-        self,
-        category_id: UUID,
-        user_id: str,
-        cascade: bool = False
-    ) -> None:
-        """Delete category with optional cascade to children"""
-        try: 
-            category = await self.get_by_id_or_raise(category_id, user_id)
-
-            # Pre-delete validation
-            await self._pre_delete_validation(category, user_id)
-
-            if cascade:
-                await self._cascade_delete_children(category_id, user_id)
-            else:
-                # Check if category has children
-                children = await self.repository.get_children(category_id, user_id)
-                if children:
-                    raise CategoryHasChildrenError(
-                        detail="Cannot delete category with children. Use cascade=true to delete children.",
-                        context={"category_id": str(category_id), "children_count": len(children)}
-                    )
-            
-            # Soft delete category
-            await self.delete(category_id, user_id, soft=True)
-
-            # Post delete
-            await self._post_delete_actions(category_id, user_id)
-
-        except (CategoryNotFoundError, CategoryHasChildrenError, CategoryInUseError):
-            raise
-        except Exception as e:
-            logger.error(f"Unexpected error deleting category {category_id}: {str(e)}")
-            raise InternalServerError(
-                detail="Failed to delete category",
-                context={"category_id": str(category_id), "user_id": user_id}
-            )
-        
+    # Category-specific business methods (NOT generic CRUD)
     async def get_category_hierarchy(
         self, 
         user_id: str, 
         category_type: Optional[CategoryType] = None,
         include_inactive: bool = False
     ) -> List[CategoryHierarchy]:
-        """Build hierarchical tree structure from root categories."""
+        """Category-specific: Build hierarchical tree structure from root categories."""
         try:
             return await self.repository.get_hierarchy(user_id, category_type, include_inactive)
         except Exception as e:
-            logger.error(f"Error getting category hierarchy for user {user_id}: {str(e)}")
+            logger.error(f"Error getting category hierarchy for user {user_id}: {e!s}")
             raise InternalServerError(
                 detail="Failed to retrieve category hierarchy",
                 context={"user_id": user_id, "category_type": category_type}
             )
-    
+
     async def get_category_path(self, category_id: UUID, user_id: str) -> CategoryPath:
-        """Get category breadcrumb path from root to category."""
+        """Category-specific: Get category breadcrumb path from root to category."""
         try:
             # Validate category exists and belongs to user
             await self.get_by_id_or_raise(category_id, user_id)
             return await self.repository.get_category_path(category_id, user_id)
-        except CategoryNotFoundError:
+        except (CategoryNotFoundError, ValidationError):
             raise
         except Exception as e:
-            logger.error(f"Error getting category path: {str(e)}")
+            logger.error(f"Error getting category path: {e!s}")
             raise InternalServerError(
                 detail="Failed to retrieve category path",
                 context={"category_id": str(category_id), "user_id": user_id}
@@ -169,57 +63,65 @@ class CategoryService(BaseService[Category, CategoryRepository]):
         user_id: str, 
         include_inactive: bool = False
     ) -> List[Category]:
-        """Get direct children of a category."""
+        """Category-specific: Get direct children of a category."""
         try:
             # Validate parent category exists
             await self.get_by_id_or_raise(category_id, user_id)
             return await self.repository.get_children(category_id, user_id, include_inactive)
-        except CategoryNotFoundError:
+        except (CategoryNotFoundError, ValidationError):
             raise
         except Exception as e:
-            logger.error(f"Error getting children for category {category_id}: {str(e)}")
+            logger.error(f"Error getting children for category {category_id}: {e!s}")
             raise InternalServerError(
                 detail="Failed to get category children",
                 context={"category_id": str(category_id), "user_id": user_id}
             )
 
     async def get_category_stats(self, user_id: str) -> CategoryStatsResponse:
-        """Get category statistics for the user."""
+        """Category-specific: Get category statistics for the user."""
         try:
             return await self.repository.get_stats(user_id)
         except Exception as e:
-            logger.error(f"Error getting category stats for user {user_id}: {str(e)}")
+            logger.error(f"Error getting category stats for user {user_id}: {e!s}")
             raise InternalServerError(
                 detail="Failed to retrieve category statistics",
                 context={"user_id": user_id}
             )
 
-    # Override BaseService methods for category-specific behavior
-    async def get_paginated(
+    async def delete_with_cascade(
         self,
+        category_id: UUID,
         user_id: str,
-        skip: int = 0,
-        limit: int = 100,
-        include_inactive: bool = False,
-        search: Optional[str] = None,
-        sort_field: str = "name",
-        sort_order: str = "asc",
-        filters: Optional[Dict[str, Any]] = None
-    ) -> Tuple[List[Category], int]:
-        """Get categories with pagination - override for category-specific defaults."""
-        return await super().get_paginated(
-            user_id=user_id,
-            skip=skip,
-            limit=limit,
-            include_inactive=include_inactive,
-            search=search,
-            search_fields=["name"],  # Category-specific search fields
-            sort_field=sort_field,
-            sort_order=sort_order,
-            filters=filters
-        )
+        cascade: bool = False
+    ) -> None:
+        """Category-specific: Delete category with optional cascade to children."""
+        try:
+            category = await self.get_by_id_or_raise(category_id, user_id)
+            
+            if cascade:
+                await self._cascade_delete_children(category_id, user_id)
+            else:
+                # Check if category has children
+                children = await self.repository.get_children(category_id, user_id)
+                if children:
+                    raise CategoryHasChildrenError(
+                        detail="Cannot delete category with children. Use cascade=true to delete children.",
+                        context={"category_id": str(category_id), "children_count": len(children)}
+                    )
+            
+            # Use BaseService delete method
+            await self.delete(category_id, user_id, soft=True)
+            
+        except (CategoryNotFoundError, CategoryHasChildrenError, CategoryInUseError):
+            raise
+        except Exception as e:
+            logger.error(f"Error deleting category {category_id}: {e!s}")
+            raise InternalServerError(
+                detail="Failed to delete category",
+                context={"category_id": str(category_id), "user_id": user_id}
+            )
 
-    # Override BaseService validation hooks
+    # Override BaseService validation hooks (category-specific validation)
     async def _pre_create_validation(self, entity_data: Dict[str, Any], user_id: str) -> None:
         """Category-specific pre-create validation."""
         await self._validate_category_data(entity_data, user_id)
@@ -277,10 +179,10 @@ class CategoryService(BaseService[Category, CategoryRepository]):
         """Category-specific pre-delete validation."""
         # Check if category is in use by expenses (if expense model exists)
         # This would require checking with expense service
-        # TODO
+        # For now, we'll just validate it exists
         pass
 
-    # Category-specific validation methods
+    # Category-specific validation methods (private helpers)
     async def _validate_category_data(
         self, 
         data: Dict[str, Any], 
@@ -306,7 +208,7 @@ class CategoryService(BaseService[Category, CategoryRepository]):
         
         # Validate color format if provided
         if 'color' in data and data['color']:
-            if not re.match(r"^#[0-9A-Fa-f]{6}, data['color']"):
+            if not re.match(r'^#[0-9A-Fa-f]{6}$', data['color']):
                 raise CategoryValidationError(
                     detail="Color must be in hex format (#RRGGBB)",
                     context={"color": data['color']}
@@ -398,5 +300,5 @@ class CategoryService(BaseService[Category, CategoryRepository]):
             # Recursively delete grandchildren first
             await self._cascade_delete_children(child.id, user_id)
             
-            # Then delete the child
+            # Then delete the child using BaseService method
             await self.delete(child.id, user_id, soft=True)

@@ -1,9 +1,18 @@
-from sqlalchemy import Column, String, Boolean, DateTime, ForeignKey, CheckConstraint, UniqueConstraint, Index, Enum
+from sqlalchemy import (
+    Column,
+    String,
+    Boolean,
+    DateTime,
+    ForeignKey,
+    CheckConstraint,
+    UniqueConstraint,
+    Index,
+    Enum
+)
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from sqlalchemy.dialects.postgresql import UUID as PostgresUUID
 from sqlalchemy.sql import text
-from datetime import datetime
 from enum import Enum as PyEnum
 
 from ..core.database import Base

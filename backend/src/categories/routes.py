@@ -33,8 +33,8 @@ async def create_category(
     db: AsyncSession = Depends(get_db)
 ):
     """Create a new category with comprehensive validation."""
-    category_service = CategoryService(db)
-    category = await category_service.create_category(current_user.id, category_data)
+    service = CategoryService(db)
+    category = await service.create_category(current_user.id, category_data)
     
     # Build response with computed level
     response = CategoryResponse.model_validate(category)
