@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-import { Expense, PaymentStatus, ExpenseType, PaymentMethod } from '@/types/expenses'
+import { Expense, PaymentStatus, ExpenseType, PaymentMethod } from '@/lib/types/expenses'
 
 export interface TableColumn {
   key: keyof Expense

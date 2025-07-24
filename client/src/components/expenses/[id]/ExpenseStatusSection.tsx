@@ -3,7 +3,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { AlertCircle, Clock, CheckCircle, XCircle } from 'lucide-react'
-import { Expense, PaymentStatus } from '@/types/expenses'
+import { Expense, PaymentStatus } from '@/lib/types/expenses'
 
 interface ExpenseStatusSectionProps {
   expense: Expense

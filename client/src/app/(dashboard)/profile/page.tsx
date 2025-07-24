@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
-import { usersApi } from '@/api/users';
-import type { UserProfile } from '@/types/user';
+import { useAuth } from '@/lib/contexts/AuthContext';
+import { usersApi } from '@/lib/api/users';
+import type { UserProfile } from '@/lib/types/user';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 

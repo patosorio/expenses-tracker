@@ -118,3 +118,25 @@ export interface UpdateExpensePayload {
   tags?: string[]
   custom_fields?: Record<string, any>
 }
+
+export interface UseExpensesOptions {
+  page?: number
+  limit?: number
+  filters?: ExpenseFilters
+  sortBy?: string
+  sortOrder?: 'asc' | 'desc'
+  enabled?: boolean
+}
+
+export interface UseExpensesReturn {
+  expenses: Expense[]
+  total: number
+  pages: number
+  currentPage: number
+  isLoading: boolean
+  error: string | null
+  refetch: () => Promise<void>
+  setPage: (page: number) => void
+  setFilters: (filters: ExpenseFilters) => void
+  setSort: (sortBy: string, sortOrder: 'asc' | 'desc') => void
+}

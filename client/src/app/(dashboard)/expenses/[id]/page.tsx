@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from "react"
 import { useParams } from "next/navigation"
-import { Expense } from "@/types/expenses"
-import { expensesApi } from "@/api/expenses"
+import { Expense } from "@/lib/types/expenses"
+import { expensesApi } from "@/lib/api/expenses"
 import { UUID } from "crypto"
 import { ExpenseDetailView } from "@/components/expenses"
 

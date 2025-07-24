@@ -1,21 +1,21 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
-import { Expense, ExpenseFilters, PaginatedExpenseResponse } from '@/types/expenses'
+import { useState, useEffect, useCallback } from 'react'
+import { Contact, ContactFilters, ContactListResponse } from '@/lib/types/contacts'
 import { useApi } from '@/hooks/UseApi'
-import { expensesApi } from '@/api/expenses'
+import { contactsApi } from '@/lib/api/contacts'
 
-interface UseExpensesOptions {
+interface UseContactsOptions {
   page?: number
   limit?: number
-  filters?: ExpenseFilters
+  filters?: ContactFilters
   sortBy?: string
   sortOrder?: 'asc' | 'desc'
   enabled?: boolean
 }
 
-interface UseExpensesReturn {
-  expenses: Expense[]
+interface UseContactsReturn {
+  contacts: Contact[]
   total: number
   pages: number
   currentPage: number
@@ -23,37 +23,42 @@ interface UseExpensesReturn {
   error: string | null
   refetch: () => Promise<void>
   setPage: (page: number) => void
-  setFilters: (filters: ExpenseFilters) => void
+  setFilters: (filters: ContactFilters) => void
   setSort: (sortBy: string, sortOrder: 'asc' | 'desc') => void
 }
 
-export const useExpenses = (options: UseExpensesOptions = {}): UseExpensesReturn => {
+export const useContacts = (options: UseContactsOptions = {}): UseContactsReturn => {
   const {
     page = 1,
     limit = 25,
     filters = {},
-    sortBy = 'expense_date',
+    sortBy = 'created_at',
     sortOrder = 'desc',
     enabled = true
   } = options
 
-  const [data, setData] = useState<PaginatedExpenseResponse | null>(null)
+  const [data, setData] = useState<ContactListResponse | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [currentPage, setCurrentPage] = useState(page)
-  const [currentFilters, setCurrentFilters] = useState<ExpenseFilters>(filters)
+  const [currentFilters, setCurrentFilters] = useState<ContactFilters>(filters)
   const [currentSort, setCurrentSort] = useState({ sortBy, sortOrder })
-  const isFetchingRef = useRef(false)
 
-  const fetchExpenses = useCallback(async () => {
-    if (!enabled || isFetchingRef.current) return
+  const fetchContacts = useCallback(async () => {
+    if (!enabled) return
 
     try {
-      isFetchingRef.current = true
+      console.log('Fetching contacts with params:', {
+        page: currentPage,
+        limit,
+        filters: currentFilters,
+        sortBy: currentSort.sortBy,
+        sortOrder: currentSort.sortOrder
+      })
       setIsLoading(true)
       setError(null)
       
-      const response = await expensesApi.getExpenses(
+      const response = await contactsApi.getContacts(
         currentPage,
         limit,
         currentFilters,
@@ -61,20 +66,20 @@ export const useExpenses = (options: UseExpensesOptions = {}): UseExpensesReturn
         currentSort.sortOrder
       )
       
+      console.log('Contacts fetched:', response.contacts.length, 'total:', response.total)
       setData(response)
     } catch (err) {
-      console.error('Error fetching expenses:', err)
-      setError(err instanceof Error ? err.message : 'Failed to fetch expenses')
+      console.error('Error fetching contacts:', err)
+      setError(err instanceof Error ? err.message : 'Failed to fetch contacts')
     } finally {
       setIsLoading(false)
-      isFetchingRef.current = false
     }
   }, [enabled, currentPage, limit, currentFilters, currentSort])
 
   // Fetch data when dependencies change
   useEffect(() => {
-    fetchExpenses()
-  }, [fetchExpenses])
+    fetchContacts()
+  }, [fetchContacts])
 
   // Debounce search filter
   useEffect(() => {
@@ -84,18 +89,18 @@ export const useExpenses = (options: UseExpensesOptions = {}): UseExpensesReturn
       if (currentPage !== 1) {
         setCurrentPage(1) // Reset to first page when searching
       } else {
-        fetchExpenses()
+        fetchContacts()
       }
     }, 300)
 
     return () => clearTimeout(timeoutId)
-  }, [currentFilters.search, currentPage]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [currentFilters.search]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const setPage = useCallback((newPage: number) => {
     setCurrentPage(newPage)
   }, [])
 
-  const setFilters = useCallback((newFilters: ExpenseFilters) => {
+  const setFilters = useCallback((newFilters: ContactFilters) => {
     setCurrentFilters(newFilters)
     setCurrentPage(1) // Reset to first page when filters change
   }, [])
@@ -106,11 +111,11 @@ export const useExpenses = (options: UseExpensesOptions = {}): UseExpensesReturn
   }, [])
 
   const refetch = useCallback(async () => {
-    await fetchExpenses()
-  }, [fetchExpenses])
+    await fetchContacts()
+  }, [fetchContacts])
 
   return {
-    expenses: data?.expenses || [],
+    contacts: data?.contacts || [],
     total: data?.total || 0,
     pages: data?.pages || 0,
     currentPage,

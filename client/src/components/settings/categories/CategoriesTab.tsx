@@ -3,9 +3,9 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { SettingsCard } from "@/components/settings/SettingsCard"
 import { AddCategoryDialog } from "./AddCategoryDialog"
-import { Category, CategoryWithChildren } from "@/types/settings"
-import { settingsApi } from "@/api/settings"
-import { useAuth } from "@/contexts/AuthContext"
+import { Category, CategoryWithChildren } from "@/lib/types/settings"
+import { settingsApi } from "@/lib/api/settings"
+import { useAuth } from "@/lib/contexts/AuthContext"
 import { 
   FolderTree, 
   Edit, 

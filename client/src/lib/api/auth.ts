@@ -1,4 +1,4 @@
-import { TokenResponse } from '@/types/user';
+import { TokenResponse } from '@/lib/types/user';
 import { apiClient } from './client';
 
 export class AuthApi {

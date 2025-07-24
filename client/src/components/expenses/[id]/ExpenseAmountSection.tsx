@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
-import { Expense } from '@/types/expenses'
+import { Expense } from '@/lib/types/expenses'
 
 interface ExpenseAmountSectionProps {
   expense: Expense

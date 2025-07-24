@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { CheckCircle } from 'lucide-react'
 import { FloatingInput } from '@/components/layout/floating-input'
-import { authApi } from '@/api/auth'
+import { authApi } from '@/lib/api/auth'
 import { useToast } from '@/components/ui/use-toast'
 
 

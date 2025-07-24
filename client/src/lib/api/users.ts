@@ -1,4 +1,4 @@
-import { UserProfile } from '@/types/user';
+import { UserProfile } from '@/lib/types/user';
 import { apiClient } from './client';
 
 export class UsersApi {

@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { apiClient, NetworkError, AuthError } from '@/api/client';
-import { UseApiOptions, UseApiReturn } from '@/types/api';
+import { apiClient, NetworkError, AuthError } from '@/lib/api/client';
+import { UseApiOptions, UseApiReturn } from '@/lib/types/api';
 
 export function useApi<T>(
   apiCall: () => Promise<T>,

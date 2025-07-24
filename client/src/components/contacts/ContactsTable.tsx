@@ -10,7 +10,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Contact, ContactType, TableColumn } from '@/types/contacts'
+import { Contact, ContactType, TableColumn } from '@/lib/types/contacts'
 import { ContactTypeBadge } from '@/components/contacts/ContactTypeBadge'
 import { getColumnDisplayValue } from '@/hooks/contacts/UseTableColumns'
 

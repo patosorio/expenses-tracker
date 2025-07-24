@@ -10,8 +10,8 @@ import { ExpensesTable } from '@/components/expenses/ExpensesTable'
 import { ExpensesPagination } from '@/components/expenses/expenses-pagination'
 import { useExpenses } from '@/hooks/expenses/UseExpenses'
 import { useTableColumns } from '@/hooks/expenses/UseTableColumns'
-import { Expense, ExpenseFilters, CreateExpensePayload } from '@/types/expenses'
-import { expensesApi } from '@/api/expenses'
+import { Expense, ExpenseFilters, CreateExpensePayload } from '@/lib/types/expenses'
+import { expensesApi } from '@/lib/api/expenses'
 import { AddExpenseDialog } from '@/components/expenses/AddExpenseDialog'
 
 export default function ExpensesPage() {

@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { apiClient, ApiError, NetworkError, AuthError } from '@/api/client';
+import { apiClient, ApiError, NetworkError, AuthError } from '@/lib/api/client';
 import { useAuth } from './AuthContext';
 import { AxiosError } from 'axios';
 

@@ -3,7 +3,7 @@
 import { SettingsCard } from "../SettingsCard"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
-import { NotificationSettings as NotificationSettingsType } from "@/types/settings"
+import { NotificationSettings as NotificationSettingsType } from "@/lib/types/settings"
 import { Bell, Mail, Calendar, AlertCircle, Users, BarChart3 } from "lucide-react"
 
 interface NotificationSettingsProps {

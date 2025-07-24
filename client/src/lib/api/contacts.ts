@@ -6,7 +6,7 @@ import {
   UpdateContactPayload,
   ContactSummaryResponse,
   ContactType
-} from "@/types/contacts"
+} from "@/lib/types/contacts"
 import { UUID } from "crypto"
 import { apiClient } from "./client"
 

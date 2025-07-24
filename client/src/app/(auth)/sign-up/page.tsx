@@ -11,9 +11,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { FloatingInput } from '@/components/layout/floating-input';
 import { Switch } from '@/components/ui/switch';
 import { checkPasswordStrength } from '@/lib/utils/password';
-import { useAuth } from '@/contexts/AuthContext';
-import { usersApi } from '@/api/users';
-import { authApi } from '@/api/auth';
+import { useAuth } from '@/lib/contexts/AuthContext';
+import { usersApi } from '@/lib/api/users';
+import { authApi } from '@/lib/api/auth';
 import { useToast } from '@/components/ui/use-toast';
 
 export default function SignUp() {

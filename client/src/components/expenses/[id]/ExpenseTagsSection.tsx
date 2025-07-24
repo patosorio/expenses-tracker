@@ -3,7 +3,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Tag } from 'lucide-react'
-import { Expense } from '@/types/expenses'
+import { Expense } from '@/lib/types/expenses'
 
 interface ExpenseTagsSectionProps {
   expense: Expense

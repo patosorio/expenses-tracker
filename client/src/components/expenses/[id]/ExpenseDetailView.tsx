@@ -1,6 +1,6 @@
 'use client'
 
-import { Expense } from '@/types/expenses'
+import { Expense } from '@/lib/types/expenses'
 import { ExpenseDetailHeader } from './ExpenseDetailHeader'
 import { ExpenseAmountSection } from './ExpenseAmountSection'
 import { ExpenseBasicInfoSection } from './ExpenseBasicInfoSection'

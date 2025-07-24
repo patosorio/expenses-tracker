@@ -1,7 +1,7 @@
 'use client'
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Expense } from '@/types/expenses'
+import { Expense } from '@/lib/types/expenses'
 
 interface ExpenseCustomFieldsSectionProps {
   expense: Expense

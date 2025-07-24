@@ -3,7 +3,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Receipt, FileText, Upload, Eye } from 'lucide-react'
-import { Expense } from '@/types/expenses'
+import { Expense } from '@/lib/types/expenses'
 
 interface ExpenseDocumentsSectionProps {
   expense: Expense

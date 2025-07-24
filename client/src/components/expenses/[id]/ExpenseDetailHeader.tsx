@@ -3,7 +3,7 @@
 import { ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ExpenseStatusBadge } from '../ExpenseStatusBadge'
-import { Expense, PaymentStatus } from '@/types/expenses'
+import { Expense, PaymentStatus } from '@/lib/types/expenses'
 import { useRouter } from 'next/navigation'
 
 interface ExpenseDetailHeaderProps {

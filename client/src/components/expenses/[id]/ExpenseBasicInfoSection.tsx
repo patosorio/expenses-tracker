@@ -3,7 +3,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { Calendar, Tag, User, Building2 } from 'lucide-react'
-import { Expense } from '@/types/expenses'
+import { Expense } from '@/lib/types/expenses'
 
 interface ExpenseBasicInfoSectionProps {
   expense: Expense

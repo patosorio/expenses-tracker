@@ -14,7 +14,7 @@ import {
   IntegrationSettings,
   ApiKeyConfiguration,
   ExportConfiguration,
-} from '@/types/settings'
+} from '@/lib/types/settings'
 import { apiClient } from './client'
 
 export class UserSettingsApi {

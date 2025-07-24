@@ -1,6 +1,6 @@
 'use client'
 
-import { ContactType } from '@/types/contacts'
+import { ContactType } from '@/lib/types/contacts'
 import { getContactTypeBadgeVariant } from '@/hooks/contacts/UseTableColumns'
 
 interface ContactTypeBadgeProps {

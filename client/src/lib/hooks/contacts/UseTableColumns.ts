@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useCallback, useMemo } from 'react'
-import { Contact, ContactType, TableColumn } from '@/types/contacts'
+import { Contact, ContactType, TableColumn } from '@/lib/types/contacts'
 
 const DEFAULT_COLUMNS: TableColumn[] = [
   { 

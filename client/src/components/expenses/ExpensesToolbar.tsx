@@ -13,7 +13,7 @@ import {
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Expense, ExpenseFilters, ExpenseType, PaymentStatus, PaymentMethod } from '@/types/expenses'
+import { Expense, ExpenseFilters, ExpenseType, PaymentStatus, PaymentMethod } from '@/lib/types/expenses'
 import { TableColumn } from '@/hooks/expenses/UseTableColumns'
 
 interface ExpensesToolbarProps {

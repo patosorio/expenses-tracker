@@ -6,7 +6,7 @@ import {
   CreateExpensePayload,
   UpdateExpensePayload,
   ExpenseType
-} from "@/types/expenses"
+} from "@/lib/types/expenses"
 import { UUID } from "crypto"
 import { apiClient } from "./client"
 

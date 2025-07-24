@@ -4,8 +4,8 @@ import { createContext, useContext, useEffect, useState, ReactNode } from 'react
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, User, onAuthStateChanged } from 'firebase/auth';
 import { auth } from '@/lib/firebase/config';
 import { useRouter } from 'next/navigation';
-import { authApi } from '@/api/auth';
-import { UserProfile } from '@/types/user';
+import { authApi } from '@/lib/api/auth';
+import { UserProfile } from '@/lib/types/user';
 
 interface AuthContextType {
   user: User | null;
