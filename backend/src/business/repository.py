@@ -6,20 +6,18 @@ import logging
 
 from .models import BusinessSettings, TaxConfiguration
 from ..core.shared.base_repository import BaseRepository
-from .exceptions import (
-    TaxConfigurationValidationError, MultipleDefaultTaxConfigsError
-)
+from ..core.shared.exceptions import InternalServerError
 
 logger = logging.getLogger(__name__)
 
 
-class BusinessSettingsRepository(BaseRepository[BusinessSettings]):
-    """Repository for business settings data access operations"""
+class BusinessRepository(BaseRepository[BusinessSettings]):
+    """Repository for business settings data access operations extending BaseRepository."""
     
     def __init__(self, db: AsyncSession) -> None:
         super().__init__(db, BusinessSettings)
 
-    # Business settings-specific methods only (BaseRepository provides CRUD)
+    # Business-specific methods only (BaseRepository provides CRUD)
     async def get_by_user_id(self, user_id: str) -> Optional[BusinessSettings]:
         """Get business settings by user ID"""
         try:
@@ -27,8 +25,11 @@ class BusinessSettingsRepository(BaseRepository[BusinessSettings]):
             result = await self.db.execute(query)
             return result.scalar_one_or_none()
         except Exception as e:
-            logger.error(f"Error getting business settings for user {user_id}: {e!s}")
-            raise
+            logger.error(f"Database error getting business settings by user ID: {e!s}")
+            raise InternalServerError(
+                detail="Database error occurred while retrieving business settings",
+                context={"user_id": user_id}
+            )
     
     async def exists_for_user(self, user_id: str) -> bool:
         """Check if business settings exist for user"""
@@ -38,35 +39,20 @@ class BusinessSettingsRepository(BaseRepository[BusinessSettings]):
             count = result.scalar() or 0
             return count > 0
         except Exception as e:
-            logger.error(f"Error checking business settings existence for user {user_id}: {e!s}")
-            raise
+            logger.error(f"Database error checking business settings existence: {e!s}")
+            raise InternalServerError(
+                detail="Database error occurred while checking business settings existence",
+                context={"user_id": user_id}
+            )
 
 
 class TaxConfigurationRepository(BaseRepository[TaxConfiguration]):
-    """Repository for tax configuration data access operations"""
+    """Repository for tax configuration data access operations extending BaseRepository."""
     
     def __init__(self, db: AsyncSession) -> None:
         super().__init__(db, TaxConfiguration)
 
     # Tax configuration-specific methods
-    async def get_by_user_id(
-        self, 
-        user_id: str, 
-        active_only: bool = True
-    ) -> List[TaxConfiguration]:
-        """Get user's tax configurations with filtering"""
-        try:
-            # Use BaseRepository's get_all with proper filtering
-            return await self.get_all(
-                user_id=user_id,
-                include_inactive=not active_only,
-                sort_field="is_default",
-                sort_order="desc"
-            )
-        except Exception as e:
-            logger.error(f"Error getting tax configurations for user {user_id}: {e!s}")
-            raise
-
     async def get_by_name(self, user_id: str, name: str) -> Optional[TaxConfiguration]:
         """Get tax configuration by name for user"""
         try:
@@ -80,8 +66,11 @@ class TaxConfigurationRepository(BaseRepository[TaxConfiguration]):
             result = await self.db.execute(query)
             return result.scalar_one_or_none()
         except Exception as e:
-            logger.error(f"Error getting tax configuration by name '{name}' for user {user_id}: {e!s}")
-            raise
+            logger.error(f"Database error getting tax configuration by name: {e!s}")
+            raise InternalServerError(
+                detail="Database error occurred while retrieving tax configuration by name",
+                context={"user_id": user_id, "name": name}
+            )
 
     async def get_default_for_user(self, user_id: str) -> Optional[TaxConfiguration]:
         """Get default tax configuration for user"""
@@ -96,20 +85,17 @@ class TaxConfigurationRepository(BaseRepository[TaxConfiguration]):
             result = await self.db.execute(query)
             configs = result.scalars().all()
             
-            # Ensure only one default exists
+            # Log warning if multiple defaults found
             if len(configs) > 1:
                 logger.warning(f"Multiple default tax configurations found for user {user_id}")
-                raise MultipleDefaultTaxConfigsError(
-                    detail=f"Found {len(configs)} default tax configurations",
-                    context={"user_id": user_id, "count": len(configs)}
-                )
             
             return configs[0] if configs else None
-        except MultipleDefaultTaxConfigsError:
-            raise
         except Exception as e:
-            logger.error(f"Error getting default tax configuration for user {user_id}: {e!s}")
-            raise
+            logger.error(f"Database error getting default tax configuration: {e!s}")
+            raise InternalServerError(
+                detail="Database error occurred while retrieving default tax configuration",
+                context={"user_id": user_id}
+            )
 
     async def unset_all_defaults(self, user_id: str, exclude_id: str | None = None) -> int:
         """Unset all default tax configurations for user, returns count of updated records"""
@@ -136,110 +122,52 @@ class TaxConfigurationRepository(BaseRepository[TaxConfiguration]):
             return updated_count
                 
         except Exception as e:
-            logger.error(f"Error unsetting default tax configurations for user {user_id}: {e!s}")
-            raise TaxConfigurationValidationError(
-                detail="Failed to unset default tax configurations",
-                context={"user_id": user_id, "exclude_id": exclude_id, "original_error": str(e)}
+            logger.error(f"Database error unsetting default tax configurations: {e!s}")
+            raise InternalServerError(
+                detail="Database error occurred while unsetting default tax configurations",
+                context={"user_id": user_id, "exclude_id": exclude_id}
             )
 
-    async def set_as_default(self, tax_config_id: UUID, user_id: str) -> TaxConfiguration:
-        """Set a tax configuration as default for user"""
-        try:
-            # First unset all other defaults
-            await self.unset_all_defaults(user_id, exclude_id=str(tax_config_id))
-            
-            # Get and update the target configuration
-            tax_config = await self.get_by_id_or_raise(tax_config_id, user_id)
-            return await self.update(tax_config, {"is_default": True})
-            
-        except Exception as e:
-            logger.error(f"Error setting tax configuration {tax_config_id} as default: {e!s}")
-            raise TaxConfigurationValidationError(
-                detail="Failed to set tax configuration as default",
-                context={"tax_config_id": str(tax_config_id), "user_id": user_id, "original_error": str(e)}
-            )
-
-    async def count_active_for_user(self, user_id: str) -> int:
-        """Count active tax configurations for user"""
-        try:
-            return await self.count(
-                user_id=user_id,
-                include_inactive=False
-            )
-        except Exception as e:
-            logger.error(f"Error counting active tax configurations for user {user_id}: {e!s}")
-            raise
-
-    async def get_by_tax_rate(
+    async def check_duplicate_name(
         self, 
         user_id: str, 
-        tax_rate: float, 
-        tolerance: float = 0.01
-    ) -> List[TaxConfiguration]:
-        """Get tax configurations by rate with tolerance"""
+        name: str, 
+        exclude_id: UUID | None = None
+    ) -> bool:
+        """Check if tax configuration name already exists for user"""
         try:
             query = select(TaxConfiguration).where(
                 and_(
                     TaxConfiguration.user_id == user_id,
-                    TaxConfiguration.is_active.is_(True),
-                    TaxConfiguration.tax_rate >= (tax_rate - tolerance),
-                    TaxConfiguration.tax_rate <= (tax_rate + tolerance)
+                    func.lower(TaxConfiguration.name) == name.lower().strip(),
+                    TaxConfiguration.is_active.is_(True)
                 )
             )
+            
+            if exclude_id:
+                query = query.where(TaxConfiguration.id != exclude_id)
+            
             result = await self.db.execute(query)
-            return list(result.scalars().all())
+            existing = result.scalar_one_or_none()
+            
+            return existing is not None
+            
         except Exception as e:
-            logger.error(f"Error getting tax configurations by rate {tax_rate} for user {user_id}: {e!s}")
-            raise
+            logger.error(f"Database error checking duplicate tax configuration name: {e!s}")
+            raise InternalServerError(
+                detail="Database error occurred while checking duplicate name",
+                context={"user_id": user_id, "name": name}
+            )
 
-
-# Legacy BusinessRepository for backward compatibility (if needed during transition)
-class BusinessRepository:
-    """Composite repository that provides access to both business settings and tax configurations"""
-    
-    def __init__(self, db: AsyncSession) -> None:
-        self.db = db
-        self.business_settings = BusinessSettingsRepository(db)
-        self.tax_configurations = TaxConfigurationRepository(db)
-    
-    # Delegate methods to specific repositories
-    async def get_business_settings(self, user_id: str) -> Optional[BusinessSettings]:
-        """Get business settings by user ID"""
-        return await self.business_settings.get_by_user_id(user_id)
-    
-    async def create_business_settings(self, settings: BusinessSettings) -> BusinessSettings:
-        """Create new business settings"""
-        return await self.business_settings.create(settings)
-    
-    async def update_business_settings(self, settings: BusinessSettings, update_data: dict) -> BusinessSettings:
-        """Update business settings"""
-        return await self.business_settings.update(settings, update_data)
-    
-    async def get_tax_configurations(self, user_id: str, active_only: bool = True) -> List[TaxConfiguration]:
-        """Get user's tax configurations"""
-        return await self.tax_configurations.get_by_user_id(user_id, active_only)
-    
-    async def get_tax_configuration_by_id(self, tax_id: str, user_id: str) -> Optional[TaxConfiguration]:
-        """Get specific tax configuration by ID"""
-        return await self.tax_configurations.get_by_id(UUID(tax_id), user_id)
-    
-    async def create_tax_configuration(self, tax_config: TaxConfiguration) -> TaxConfiguration:
-        """Create new tax configuration"""
-        return await self.tax_configurations.create(tax_config)
-    
-    async def update_tax_configuration(self, tax_config: TaxConfiguration, update_data: dict) -> TaxConfiguration:
-        """Update tax configuration"""
-        return await self.tax_configurations.update(tax_config, update_data)
-    
-    async def delete_tax_configuration(self, tax_config: TaxConfiguration) -> bool:
-        """Soft delete tax configuration"""
-        await self.tax_configurations.soft_delete(tax_config)
-        return True
-    
-    async def unset_default_tax_configs(self, user_id: str, exclude_id: str | None = None) -> None:
-        """Unset all default tax configurations for user"""
-        await self.tax_configurations.unset_all_defaults(user_id, exclude_id)
-    
-    async def get_default_tax_configuration(self, user_id: str) -> Optional[TaxConfiguration]:
-        """Get default tax configuration for user"""
-        return await self.tax_configurations.get_default_for_user(user_id)
+    async def is_tax_config_in_use(self, tax_config_id: UUID) -> bool:
+        """Check if tax configuration is currently in use"""
+        try:
+            # This would check expenses table for usage
+            # For now, return False - implement when expenses integration is ready
+            return False
+        except Exception as e:
+            logger.error(f"Database error checking tax configuration usage: {e!s}")
+            raise InternalServerError(
+                detail="Database error occurred while checking tax configuration usage",
+                context={"tax_config_id": str(tax_config_id)}
+            )

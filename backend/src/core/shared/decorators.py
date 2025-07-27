@@ -4,7 +4,7 @@ from fastapi import HTTPException, status
 import logging
 
 from .exceptions import (
-    BaseCustomException, ValidationError, NotFoundError, 
+    AppBaseException, ValidationError, NotFoundError, 
     ConflictError, BadRequestError, UnauthorizedError,
     ForbiddenError, ExternalServiceError, InternalServerError
 )
@@ -27,7 +27,7 @@ def handle_service_exceptions(func: Callable) -> Callable:
         try:
             return await func(*args, **kwargs)
             
-        except BaseCustomException as e:
+        except AppBaseException as e:
             # Map custom exceptions to HTTP exceptions
             status_map = {
                 ValidationError: status.HTTP_422_UNPROCESSABLE_ENTITY,

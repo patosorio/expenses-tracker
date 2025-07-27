@@ -98,3 +98,13 @@ class TaxConfigurationListResponse(BaseModel):
     page: int
     per_page: int
     pages: int 
+
+class BusinessStatsResponse(BaseModel):
+    """
+    Response schema for business statistics overview.
+    """
+    business_settings_configured: bool
+    total_tax_configurations: int
+    active_tax_configurations: int
+    has_default_tax_configuration: bool
+    default_tax_configuration_id: Optional[str] = None 

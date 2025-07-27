@@ -15,6 +15,7 @@ interface AuthContextType {
   signup: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   isLoading: boolean;
+  isTokenVerified: boolean;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -25,6 +26,7 @@ const AuthContext = createContext<AuthContextType>({
   signup: async () => {},
   logout: async () => {},
   isLoading: true,
+  isTokenVerified: false,
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -34,44 +36,89 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isTokenVerified, setIsTokenVerified] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setUser(user);
       setProfile(null); // Reset profile when auth state changes
+      setIsTokenVerified(false);
       
       if (user) {
         try {
           const token = await user.getIdToken();
           setToken(token);
-          localStorage.setItem('firebase-token', token);
+          localStorage.setItem('auth_token', token);
           
-          // Verify token with backend and get user profile
-          const response = await authApi.verifyToken(token);
-          setProfile(response.user);
+          // Try to verify token with backend, but don't fail completely if it doesn't work
+          try {
+            const response = await authApi.verifyToken(token);
+            setProfile(response.user);
+            setIsTokenVerified(true);
+          } catch (verifyError) {
+            console.warn('Token verification failed, but user is still authenticated:', verifyError);
+            // Don't sign out the user, just mark token as not verified
+            // The user can still use the app, but some features might be limited
+            setIsTokenVerified(false);
+          }
         } catch (error) {
-          console.error('Error verifying token:', error);
-          // If token verification fails, sign out the user
+          console.error('Error getting token:', error);
+          // Only sign out if we can't get the token at all
           await signOut(auth);
           setUser(null);
           setToken(null);
-          localStorage.removeItem('firebase-token');
+          localStorage.removeItem('auth_token');
         }
       } else {
         setToken(null);
-        localStorage.removeItem('firebase-token');
+        localStorage.removeItem('auth_token');
+        setIsTokenVerified(false);
       }
       
       setIsLoading(false);
     });
 
-    return () => unsubscribe();
+    // Periodic token refresh every 45 minutes (Firebase tokens expire in 1 hour)
+    const refreshInterval = setInterval(async () => {
+      const currentUser = auth.currentUser;
+      if (currentUser) {
+        try {
+          const newToken = await currentUser.getIdToken(true); // Force refresh
+          setToken(newToken);
+          localStorage.setItem('auth_token', newToken);
+          
+          // Try to verify the new token
+          try {
+            const response = await authApi.verifyToken(newToken);
+            setProfile(response.user);
+            setIsTokenVerified(true);
+          } catch (verifyError) {
+            console.warn('Token verification failed during refresh:', verifyError);
+            setIsTokenVerified(false);
+          }
+        } catch (error) {
+          console.error('Token refresh failed:', error);
+          await signOut(auth);
+          setUser(null);
+          setToken(null);
+          setProfile(null);
+          localStorage.removeItem('auth_token');
+          setIsTokenVerified(false);
+        }
+      }
+    }, 45 * 60 * 1000); // 45 minutes instead of 50
+
+    return () => {
+      unsubscribe();
+      clearInterval(refreshInterval);
+    };
   }, []);
 
   const login = async (email: string, password: string) => {
     try {
       await signInWithEmailAndPassword(auth, email, password);
+      // Token will be set by onAuthStateChanged
       router.push('/dashboard');
     } catch (error) {
       console.error('Login error:', error);
@@ -82,6 +129,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const signup = async (email: string, password: string) => {
     try {
       await createUserWithEmailAndPassword(auth, email, password);
+      // Token will be set by onAuthStateChanged
       router.push('/dashboard');
     } catch (error) {
       console.error('Signup error:', error);
@@ -95,7 +143,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setUser(null);
       setToken(null);
       setProfile(null);
-      localStorage.removeItem('firebase-token');
+      localStorage.removeItem('auth_token');
+      setIsTokenVerified(false);
       router.push('/sign-in');
     } catch (error) {
       console.error('Logout error:', error);
@@ -104,7 +153,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, profile, token, login, signup, logout, isLoading }}>
+    <AuthContext.Provider value={{ user, profile, token, login, signup, logout, isLoading, isTokenVerified }}>
       {children}
     </AuthContext.Provider>
   );

@@ -77,7 +77,7 @@ class ApiClient {
   // Get authentication headers
   private async getAuthHeaders(): Promise<Record<string, string>> {
     // Try to get token from localStorage first
-    const storedToken = localStorage.getItem('firebase-token');
+    const storedToken = localStorage.getItem('auth_token');
     
     if (storedToken) {
       return {
@@ -90,7 +90,9 @@ class ApiClient {
     const user = auth.currentUser;
     
     if (!user) {
-      throw new AuthError('User not authenticated');
+      // Return empty headers instead of throwing error
+      // Let the backend handle authentication checks
+      return {};
     }
     
     const token = await user.getIdToken();
@@ -114,7 +116,28 @@ class ApiClient {
       } catch (error) {
         lastError = error as Error;
         
-        // Don't retry on auth errors or client errors (4xx)
+        // Check if it's an auth error (401/403) and try to refresh token
+        if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
+          console.log('Auth error detected, attempting token refresh...');
+          try {
+            const auth = getAuth();
+            const user = auth.currentUser;
+            if (user) {
+              // Force refresh the token
+              const newToken = await user.getIdToken(true);
+              localStorage.setItem('auth_token', newToken);
+              console.log('Token refreshed successfully, retrying request...');
+              // Continue to next attempt with new token
+              continue;
+            }
+          } catch (refreshError) {
+            console.error('Token refresh failed:', refreshError);
+            // If refresh fails, throw the original error
+            throw error;
+          }
+        }
+        
+        // Don't retry on auth errors or client errors (4xx) after refresh attempt
         if (error instanceof AuthError || 
             (error instanceof ApiError && (error as ApiError).status >= 400 && (error as ApiError).status < 500)) {
           throw error;
@@ -218,6 +241,11 @@ class ApiClient {
 
           if (error.name === 'AbortError') {
             throw new NetworkError('Request timeout');
+          }
+
+          // Handle network connectivity issues
+          if (error.message.includes('Network Error') || error.message.includes('ERR_NETWORK')) {
+            throw new NetworkError('Unable to connect to server. Please check your internet connection.');
           }
 
           throw finalError;

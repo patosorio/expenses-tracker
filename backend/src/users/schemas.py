@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional, Literal
+from typing import Optional, Literal, List
 from uuid import UUID
 
 from pydantic import BaseModel, EmailStr, computed_field, ConfigDict
@@ -32,6 +32,7 @@ class UserUpdate(BaseModel):
     avatar_url: Optional[str] = None
 
 
+# ✅ SINGLE UserResponse class (removed duplicate)
 class UserResponse(UserBase):
     id: str
     firebase_uid: str

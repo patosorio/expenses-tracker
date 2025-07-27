@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Expense, ExpenseFilters, ExpenseType, PaymentStatus, PaymentMethod } from '@/lib/types/expenses'
-import { TableColumn } from '@/hooks/expenses/UseTableColumns'
+import { TableColumn } from '@/lib/hooks/expenses/UseTableColumns'
 
 interface ExpensesToolbarProps {
   filters: ExpenseFilters
@@ -55,8 +55,8 @@ export const ExpensesToolbar = ({
     <Card className="p-4">
       <div className="flex flex-col gap-4">
         {/* Search and Quick Actions */}
-        <div className="flex items-center gap-4">
-          <div className="flex-1 relative">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+          <div className="flex-1 relative w-full">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search expenses..."
@@ -66,57 +66,59 @@ export const ExpensesToolbar = ({
             />
           </div>
           
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm">
-                <Settings className="h-4 w-4 mr-2" />
-                Columns
-                {hiddenColumns.length > 0 && (
-                  <span className="ml-2 bg-primary text-primary-foreground text-xs rounded-full px-2 py-0.5">
-                    {hiddenColumns.length}
-                  </span>
-                )}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
-              <div className="px-2 py-1.5 text-sm font-medium">Toggle Columns</div>
-              <DropdownMenuSeparator />
-              {columns.map((column) => (
-                <DropdownMenuItem
-                  key={column.key}
-                  onClick={() => onColumnToggle(column.key)}
-                  className="flex items-center justify-between"
-                >
-                  <span>{column.label}</span>
-                  {column.visible && (
-                    <div className="w-2 h-2 bg-primary rounded-full" />
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <Settings className="h-4 w-4 mr-2" />
+                  <span className="hidden sm:inline">Columns</span>
+                  {hiddenColumns.length > 0 && (
+                    <span className="ml-2 bg-primary text-primary-foreground text-xs rounded-full px-2 py-0.5">
+                      {hiddenColumns.length}
+                    </span>
                   )}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <div className="px-2 py-1.5 text-sm font-medium">Toggle Columns</div>
+                <DropdownMenuSeparator />
+                {columns.map((column) => (
+                  <DropdownMenuItem
+                    key={column.key}
+                    onClick={() => onColumnToggle(column.key)}
+                    className="flex items-center justify-between"
+                  >
+                    <span>{column.label}</span>
+                    {column.visible && (
+                      <div className="w-2 h-2 bg-primary rounded-full" />
+                    )}
+                  </DropdownMenuItem>
+                ))}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={onColumnReset}>
+                  Reset to Default
                 </DropdownMenuItem>
-              ))}
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={onColumnReset}>
-                Reset to Default
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+              </DropdownMenuContent>
+            </DropdownMenu>
 
-          {hasActiveFilters && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleClearFilters}
-              className="text-muted-foreground"
-            >
-              <X className="h-4 w-4 mr-2" />
-              Clear Filters
-            </Button>
-          )}
+            {hasActiveFilters && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleClearFilters}
+                className="text-muted-foreground"
+              >
+                <X className="h-4 w-4 mr-2" />
+                <span className="hidden sm:inline">Clear Filters</span>
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* Advanced Filters */}
-        <div className="flex flex-wrap items-center gap-4">
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">Type:</span>
+        <div className="flex flex-col sm:flex-row flex-wrap items-start sm:items-center gap-4">
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <span className="text-sm text-muted-foreground whitespace-nowrap">Type:</span>
             <Select
               value={filters.expense_type || 'all'}
               onValueChange={(value) => handleFilterChange('expense_type', value === 'all' ? undefined : value)}
@@ -132,8 +134,8 @@ export const ExpensesToolbar = ({
             </Select>
           </div>
 
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">Status:</span>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <span className="text-sm text-muted-foreground whitespace-nowrap">Status:</span>
             <Select
               value={filters.payment_status || 'all'}
               onValueChange={(value) => handleFilterChange('payment_status', value === 'all' ? undefined : value)}
@@ -150,8 +152,8 @@ export const ExpensesToolbar = ({
             </Select>
           </div>
 
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">Payment:</span>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <span className="text-sm text-muted-foreground whitespace-nowrap">Payment:</span>
             <Select
               value={filters.payment_method || 'all'}
               onValueChange={(value) => handleFilterChange('payment_method', value === 'all' ? undefined : value)}
@@ -169,8 +171,8 @@ export const ExpensesToolbar = ({
             </Select>
           </div>
 
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">Amount:</span>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <span className="text-sm text-muted-foreground whitespace-nowrap">Amount:</span>
             <Input
               type="number"
               placeholder="Min"

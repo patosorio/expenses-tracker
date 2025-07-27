@@ -136,7 +136,17 @@ async def get_expense(
     """Get expense by ID with full relationships."""
     service = ExpenseService(db)
     expense = await service.get_by_id_or_raise(expense_id, current_user.id)
-    return ExpenseResponse.model_validate(expense)
+
+    # Convert to dict and set None for lazy relationships
+    expense_dict = expense.__dict__.copy()
+    expense_dict['attachments'] = None
+    expense_dict['document_analysis'] = None
+    
+    # Add computed properties that aren't in __dict__
+    expense_dict['is_overdue'] = expense.is_overdue
+    expense_dict['days_overdue'] = expense.days_overdue
+    
+    return ExpenseResponse.model_validate(expense_dict)
 
 
 @router.put("/{expense_id}", response_model=ExpenseResponse)

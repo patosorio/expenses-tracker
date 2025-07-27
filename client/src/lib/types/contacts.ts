@@ -7,7 +7,7 @@ export enum ContactType {
 }
 
 export interface Contact {
-  id: UUID
+  id: string
   name: string
   contact_type: ContactType
   email?: string
@@ -23,7 +23,7 @@ export interface Contact {
   notes?: string
   tags?: string[]
   custom_fields?: Record<string, any>
-  user_id: UUID
+  user_id: string
   created_at: string
   updated_at?: string
   is_active: boolean

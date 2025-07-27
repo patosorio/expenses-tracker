@@ -6,10 +6,10 @@ import logging
 from .models import User, UserRole, UserStatus
 from .schemas import (
     UserResponse, UserUpdate, UserListResponse, UserStatsResponse,
-    UserCreate, UserSettingsResponse, UserSettingsUpdate, UserRegistration
+    UserCreate, UserSettingsResponse, UserSettingsUpdate
 )
 from .service import UserService
-from ..auth.dependencies import get_current_user, get_admin_user
+from ..auth.dependencies import get_current_user
 from ..core.database import get_db
 from ..core.shared.decorators import api_endpoint
 from ..core.shared.pagination import create_legacy_user_response
@@ -21,7 +21,7 @@ router = APIRouter()
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 @api_endpoint(handle_exceptions=True, log_calls=True)
 async def register_user(
-    registration_data: UserRegistration,
+    registration_data: UserCreate,
     firebase_uid: str = Query(..., description="Firebase UID from authentication"),
     db: AsyncSession = Depends(get_db)
 ):
@@ -65,7 +65,7 @@ async def get_users(
     role: Optional[UserRole] = Query(None),
     status: Optional[UserStatus] = Query(None),
     search: Optional[str] = Query(None),
-    current_user: User = Depends(get_admin_user),  # Use dependency for admin check
+    current_user: User = Depends(get_current_user),  # Use dependency for admin check
     db: AsyncSession = Depends(get_db)
 ):
     """Get users with filtering and pagination (Admin only)."""
@@ -130,7 +130,7 @@ async def update_user(
 @api_endpoint(handle_exceptions=True, log_calls=True)
 async def activate_user(
     user_id: str,
-    current_user: User = Depends(get_admin_user),  # Admin only dependency
+    current_user: User = Depends(get_current_user),  # Admin only dependency
     db: AsyncSession = Depends(get_db)
 ):
     """Activate user account (Admin only)."""
@@ -143,7 +143,7 @@ async def activate_user(
 @api_endpoint(handle_exceptions=True, log_calls=True)
 async def deactivate_user(
     user_id: str,
-    current_user: User = Depends(get_admin_user),  # Admin only dependency
+    current_user: User = Depends(get_current_user),  # Admin only dependency
     db: AsyncSession = Depends(get_db)
 ):
     """Deactivate user account (Admin only)."""
@@ -155,7 +155,7 @@ async def deactivate_user(
 @router.get("/stats/overview", response_model=UserStatsResponse)
 @api_endpoint(handle_exceptions=True, log_calls=True)
 async def get_user_stats(
-    current_user: User = Depends(get_admin_user),  # Admin only dependency
+    current_user: User = Depends(get_current_user),  # Admin only dependency
     db: AsyncSession = Depends(get_db)
 ):
     """Get user statistics (Admin only)."""

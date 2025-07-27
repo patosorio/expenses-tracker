@@ -19,11 +19,11 @@ export interface NotificationSettings {
 
 // Business Settings Types
 export interface BusinessSettings {
-  companyName: string
-  taxId: string
-  fiscalYearStart: string
-  defaultCurrency: string
-  taxConfigurations: TaxConfiguration[]
+  company_name: string
+  tax_id: string
+  fiscal_year_start: string
+  default_currency: string
+  tax_configurations: TaxConfiguration[]
 }
 
 export interface TaxConfiguration {
@@ -31,8 +31,8 @@ export interface TaxConfiguration {
   name: string
   rate: number
   code: string
-  isDefault: boolean
-  countryCode: string
+  is_default: boolean
+  country_code: string
   description?: string
 }
 
@@ -40,8 +40,8 @@ export interface TaxConfigurationCreate {
   name: string
   rate: number
   code: string
-  isDefault: boolean
-  countryCode: string
+  is_default: boolean
+  country_code: string
   description?: string
 }
 
@@ -49,8 +49,8 @@ export interface TaxConfigurationUpdate {
   name?: string
   rate?: number
   code?: string
-  isDefault?: boolean
-  countryCode?: string
+  is_default?: boolean
+  country_code?: string
   description?: string
 }
 
@@ -61,8 +61,8 @@ export interface TeamMember {
   name: string
   role: 'admin' | 'user' | 'viewer'
   status: 'active' | 'pending' | 'inactive'
-  invitedAt: string
-  lastActive?: string
+  invited_at: string
+  last_active?: string
 }
 
 export interface TeamInvitation {
@@ -77,8 +77,8 @@ export interface CategoryFormData {
   type: 'expense' | 'income'
   color: string
   icon: string
-  parentId?: string
-  isDefault: boolean
+  parent_id?: string
+  is_default: boolean
 }
 
 export interface Category {
@@ -87,14 +87,15 @@ export interface Category {
   type: 'expense' | 'income'
   color: string
   icon: string
-  parentId?: string
-  isDefault: boolean
+  parent_id?: string
+  is_default: boolean
   level: number
-  userId: string
-  createdAt: string
-  updatedAt?: string
-  isActive: boolean
+  user_id: string
+  created_at: string
+  updated_at?: string
+  is_active: boolean
 }
+
 
 export interface CategoryWithChildren extends Category {
   children: CategoryWithChildren[]
@@ -125,21 +126,21 @@ export interface ApiKeyConfiguration {
   id: string
   name: string
   service: string
-  isActive: boolean
-  createdAt: string
-  lastUsed?: string
+  is_active: boolean
+  created_at: string
+  last_used?: string
 }
 
 export interface WebhookConfiguration {
   id: string
   url: string
   events: string[]
-  isActive: boolean
+  is_active: boolean
   secret: string
 }
 
 export interface ExportConfiguration {
-  autoExport: boolean
+  auto_export: boolean
   frequency: 'daily' | 'weekly' | 'monthly'
   format: 'csv' | 'pdf' | 'json'
   destination: 'email' | 'drive' | 'local'
@@ -157,10 +158,10 @@ export interface UserSettingsUpdate {
 }
 
 export interface BusinessSettingsUpdate {
-  companyName?: string
-  taxId?: string
-  fiscalYearStart?: string
-  defaultCurrency?: string
+  company_name?: string
+  tax_id?: string
+  fiscal_year_start?: string
+  default_currency?: string
 }
 
 // Response Types

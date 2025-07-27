@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from typing import TypeVar, Generic
+from typing import TypeVar, Generic, List, Any
 from pydantic import BaseModel, Field
+import math
 from math import ceil
 
 T = TypeVar('T')
@@ -196,6 +197,64 @@ def create_legacy_contact_response(
     
     return ContactListResponse(
         contacts=items,
+        total=total,
+        page=page,
+        per_page=limit,
+        pages=pages
+    )
+
+def create_legacy_user_response(users: List[Any], total: int, skip: int, limit: int):
+    """Create legacy user list response for pagination."""
+    from ...users.schemas import UserListResponse, UserResponse
+    
+    user_responses = [UserResponse.model_validate(user) for user in users]
+    page = (skip // limit) + 1 if limit > 0 else 1
+    pages = math.ceil(total / limit) if total > 0 and limit > 0 else 0
+    
+    return UserListResponse(
+        users=user_responses,
+        total=total,
+        page=page,
+        per_page=limit,
+        pages=pages
+    )
+
+def create_legacy_tax_configuration_response(
+    items: list, 
+    total: int, 
+    skip: int, 
+    limit: int
+):
+    """
+    Create legacy tax configuration list response.
+    """
+    from ...business.schemas import TaxConfigurationListResponse, TaxConfigurationResponse
+    page = (skip // limit) + 1 if limit > 0 else 1
+    pages = math.ceil(total / limit) if total > 0 and limit > 0 else 0
+    tax_config_responses = [TaxConfigurationResponse.model_validate(item) for item in items]
+    return TaxConfigurationListResponse(
+        tax_configurations=tax_config_responses,
+        total=total,
+        page=page,
+        per_page=limit,
+        pages=pages
+    )
+
+def create_legacy_team_response(
+    items: list, 
+    total: int, 
+    skip: int, 
+    limit: int
+):
+    """
+    Create legacy team member list response.
+    """
+    from ...team.schemas import TeamMemberListResponse, TeamMemberResponse
+    page = (skip // limit) + 1 if limit > 0 else 1
+    pages = math.ceil(total / limit) if total > 0 and limit > 0 else 0
+    team_member_responses = [TeamMemberResponse.model_validate(item) for item in items]
+    return TeamMemberListResponse(
+        team_members=team_member_responses,
         total=total,
         page=page,
         per_page=limit,

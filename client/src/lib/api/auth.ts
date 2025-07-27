@@ -6,6 +6,7 @@ export class AuthApi {
    * Verify a token with the backend
    */
   async verifyToken(token: string): Promise<TokenResponse> {
+    // Token is passed as argument, so just ensure it's the JWT from localStorage 'auth_token'
     const response = await apiClient.post<TokenResponse>('/auth/verify', undefined, {
       headers: {
         'Authorization': `Bearer ${token}`,

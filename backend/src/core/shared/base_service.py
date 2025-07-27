@@ -26,7 +26,7 @@ class BaseService(Generic[T, R]):
         model_class: Type[T]
     ) -> None:
         self.db = db
-        self.repository: R = repository_class(db, model_class)
+        self.repository: R = repository_class(db)
         self.model_class = model_class
         self.model_name = model_class.__name__.lower()
 

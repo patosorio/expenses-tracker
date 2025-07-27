@@ -8,15 +8,13 @@ import re
 from .models import User, UserRole, UserStatus, UserSettings
 from .repository import UserRepository
 from .schemas import (
-    UserCreate, UserUpdate, UserStatsResponse, UserSettingsUpdate,
-    UserRegistration, UserProfile
+    UserCreate, UserUpdate, UserResponse, UserStatsResponse, 
+    UserSettingsUpdate, UserListResponse, UserSettingsResponse
 )
-from .exceptions import (
-    UserNotFoundError, UserAlreadyExistsError, InvalidUserDataError,
-    InvalidEmailError, DuplicateEmailError
-)
+
+from .exceptions import *
 from ..core.shared.base_service import BaseService
-from ..core.shared.exceptions import ValidationError, InternalServerError
+from ..core.shared.exceptions import InternalServerError
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +28,7 @@ class UserService(BaseService[User, UserRepository]):
     # User-specific business methods (NOT generic CRUD)
     async def register_user(
         self, 
-        registration_data: UserRegistration, 
+        registration_data: UserCreate, 
         firebase_uid: str
     ) -> User:
         """Register a new user with Firebase integration."""
@@ -78,6 +76,20 @@ class UserService(BaseService[User, UserRepository]):
             raise InternalServerError(
                 detail="Failed to retrieve user by email",
                 context={"email": email}
+            )
+
+    async def update_last_login(self, user_id: str) -> User:
+        """Update user's last login timestamp."""
+        try:
+            update_data = {
+                'last_login': datetime.utcnow()
+            }
+            return await self.update(user_id, update_data, user_id)
+        except Exception as e:
+            logger.error(f"Error updating last login for user {user_id}: {e!s}")
+            raise InternalServerError(
+                detail="Failed to update last login",
+                context={"user_id": user_id}
             )
 
     async def activate_user(self, user_id: str) -> User:
@@ -130,7 +142,7 @@ class UserService(BaseService[User, UserRepository]):
                 context={"user_id": user_id, "admin_user_id": admin_user_id}
             )
 
-    async def update_user_profile(self, user_id: str, profile_data: UserProfile) -> User:
+    async def update_user_profile(self, user_id: str, profile_data: UserResponse) -> User:
         """Update user profile information."""
         try:
             update_data = profile_data.model_dump(exclude_unset=True)

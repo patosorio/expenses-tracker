@@ -1,6 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import or_, func, select
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Type
 from datetime import datetime
 import logging
 
@@ -12,9 +12,9 @@ logger = logging.getLogger(__name__)
 
 class UserRepository(BaseRepository[User]):
     """Repository for user data access operations extending BaseRepository."""
-    def __init__(self, db: AsyncSession) -> None:
+    def __init__(self, db: AsyncSession, model_class: Type[User] = User) -> None:
         """Initialize UserRepository with database session."""
-        super().__init__(db, User)
+        super().__init__(db, model_class)
 
     async def get_user_by_firebase_uid(self, firebase_uid: str) -> Optional[User]:
         """Get user by Firebase UID with proper error handling."""
