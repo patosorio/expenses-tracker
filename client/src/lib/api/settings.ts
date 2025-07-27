@@ -177,8 +177,8 @@ export class CategoriesApi {
     // Build parent-child relationships
     categories.forEach((category: Category) => {
       const categoryWithChildren = categoryMap.get(category.id)!
-      if (category.parentId) {
-        const parent = categoryMap.get(category.parentId)
+      if (category.parent_id) {
+        const parent = categoryMap.get(category.parent_id)
         if (parent) {
           parent.children.push(categoryWithChildren)
         }
@@ -199,8 +199,8 @@ export class CategoriesApi {
       type: category.type,
       color: category.color,
       icon: category.icon,
-      parent_id: category.parentId, 
-      is_default: category.isDefault
+      parent_id: category.parent_id, 
+      is_default: category.is_default
     })
     return response.data
   }

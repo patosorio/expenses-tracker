@@ -2,29 +2,41 @@
 
 import { useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { Receipt, Plus } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { useToast } from '@/components/ui/use-toast'
 import { ExpensesToolbar } from '@/components/expenses/ExpensesToolbar'
 import { ExpensesTable } from '@/components/expenses/ExpensesTable'
-import { ExpensesPagination } from '@/components/expenses/expenses-pagination'
-import { useExpenses } from '@/hooks/expenses/UseExpenses'
-import { useTableColumns } from '@/hooks/expenses/UseTableColumns'
-import { Expense, ExpenseFilters, CreateExpensePayload } from '@/lib/types/expenses'
-import { expensesApi } from '@/lib/api/expenses'
+import { ExpensesPagination } from '@/components/expenses/ExpensesPagination'
 import { AddExpenseDialog } from '@/components/expenses/AddExpenseDialog'
+import { useTableColumns } from '@/lib/hooks/expenses/UseTableColumns'
+import { 
+  useExpenses, 
+  useCreateExpense, 
+  useDeleteExpense, 
+  useUpdateExpense 
+} from '@/lib/hooks/expenses'
+import { 
+  Expense, 
+  ExpenseFilters, 
+  CreateExpensePayload,
+  UpdateExpensePayload 
+} from '@/lib/types/expenses'
 
 export default function ExpensesPage() {
   const router = useRouter()
-  const { toast } = useToast()
+  
+  // UI State
   const [pageSize, setPageSize] = useState(25)
-  const [currentSort, setCurrentSort] = useState({ field: 'expense_date', order: 'desc' as 'asc' | 'desc' })
+  const [currentSort, setCurrentSort] = useState({ 
+    field: 'expense_date', 
+    order: 'desc' as 'asc' | 'desc' 
+  })
   const [filters, setFilters] = useState<ExpenseFilters>({})
 
   // Table columns management
   const { columns, visibleColumns, toggleColumn, resetColumns } = useTableColumns()
 
-  // Expenses data fetching
+  // Business logic hooks - all API calls and state management handled here
   const {
     expenses,
     total,
@@ -44,7 +56,11 @@ export default function ExpensesPage() {
     sortOrder: currentSort.order
   })
 
-  // Check if any filters are active
+  const createExpense = useCreateExpense()
+  const deleteExpense = useDeleteExpense()
+  const updateExpense = useUpdateExpense()
+
+  // Derived state
   const hasActiveFilters = Boolean(
     filters.search || 
     filters.expense_type || 
@@ -54,75 +70,49 @@ export default function ExpensesPage() {
     filters.max_amount
   )
 
-  // Handle filter changes
+  // Event handlers - thin wrappers that delegate to hooks
   const handleFiltersChange = useCallback((newFilters: ExpenseFilters) => {
     setFilters(newFilters)
     updateFilters(newFilters)
   }, [updateFilters])
 
-  // Handle clear filters
   const handleClearFilters = useCallback(() => {
     const emptyFilters: ExpenseFilters = {}
     setFilters(emptyFilters)
     updateFilters(emptyFilters)
   }, [updateFilters])
 
-  // Handle sorting
   const handleSort = useCallback((columnKey: keyof Expense) => {
     const newOrder = currentSort.field === columnKey && currentSort.order === 'asc' ? 'desc' : 'asc'
     setCurrentSort({ field: columnKey, order: newOrder })
     setSort(columnKey, newOrder)
   }, [currentSort, setSort])
 
-  // Handle page size change
   const handlePageSizeChange = useCallback((newPageSize: number) => {
     setPageSize(newPageSize)
-    setPage(1) // Reset to first page when changing page size
+    setPage(1)
   }, [setPage])
 
-  // Handle expense actions
+  // Business operations - simple calls to hooks
   const handleAddExpense = useCallback(async (expenseData: CreateExpensePayload) => {
-    try {
-      await expensesApi.createExpense(expenseData)
-      refetch()
-    } catch (error) {
-      // Re-throw the error so the dialog can handle it
-      throw error
-    }
-  }, [refetch])
+    await createExpense.mutateAsync(expenseData)
+  }, [createExpense])
 
   const handleViewExpense = useCallback((expense: Expense) => {
-    toast({
-      title: "View Expense",
-      description: `Viewing expense: ${expense.description}`,
-    })
     router.push(`/expenses/${expense.id}`)
-  }, [toast, router])
+  }, [router])
 
   const handleEditExpense = useCallback((expense: Expense) => {
-    // TODO: Implement edit expense modal/page
-    toast({
-      title: "Edit Expense",
-      description: `Editing expense: ${expense.description}`,
-    })
-  }, [toast])
+    // This would open edit modal or navigate to edit page
+    // For now, just navigate to detail view
+    router.push(`/expenses/${expense.id}`)
+  }, [router])
 
   const handleDeleteExpense = useCallback(async (expense: Expense) => {
-    try {
-      await expensesApi.deleteExpense(expense.id)
-      toast({
-        title: "Expense Deleted",
-        description: `${expense.description} has been deleted successfully.`,
-      })
-      refetch()
-    } catch (err) {
-      toast({
-        title: "Error",
-        description: "Failed to delete expense. Please try again.",
-        variant: "destructive",
-      })
+    if (confirm(`Are you sure you want to delete "${expense.description}"?`)) {
+      deleteExpense.mutate(expense.id)
     }
-  }, [toast, refetch])
+  }, [deleteExpense])
 
   // Show error state
   if (error) {

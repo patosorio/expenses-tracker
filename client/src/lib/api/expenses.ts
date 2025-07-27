@@ -1,118 +1,96 @@
+import { apiClient } from './client'
 import { 
-  Expense, 
-  ExpenseFilters, 
-  PaginatedExpenseResponse, 
+  CreateExpensePayload, 
+  UpdateExpensePayload, 
+  Expense,
+  PaginatedExpenseResponse,
+  ExpenseFilters,
   ExpenseStats,
-  CreateExpensePayload,
-  UpdateExpensePayload,
-  ExpenseType
-} from "@/lib/types/expenses"
-import { UUID } from "crypto"
-import { apiClient } from "./client"
+  BulkDeleteRequest,
+  BulkDeleteResponse,
+  BulkUpdateRequest,
+  BulkUpdateResponse
+} from '@/lib/types/expenses'
 
-export class ExpensesApi {
+/**
+ * Pure API layer for expenses - only HTTP requests, no business logic
+ */
+export class ExpensesApiClient {
   /**
-   * Get paginated list of expenses with filters
+   * Get paginated expenses with filters
    */
   async getExpenses(
     page: number = 1,
-    limit: number = 10,
-    filters?: ExpenseFilters,
-    sortBy: string = "expense_date",
-    sortOrder: "asc" | "desc" = "desc"
+    limit: number = 25,
+    filters: ExpenseFilters = {},
+    sortBy: string = 'expense_date',
+    sortOrder: 'asc' | 'desc' = 'desc'
   ): Promise<PaginatedExpenseResponse> {
-    const skip = (page - 1) * limit
-    const searchParams = new URLSearchParams({
-      skip: skip.toString(),
+    const params = new URLSearchParams({
+      skip: ((page - 1) * limit).toString(),
       limit: limit.toString(),
       sort_by: sortBy,
-      sort_order: sortOrder,
-      ...(filters?.expense_type && { expense_type: filters.expense_type }),
-      ...(filters?.payment_status && { payment_status: filters.payment_status }),
-      ...(filters?.payment_method && { payment_method: filters.payment_method }),
-      ...(filters?.category_id && { category_id: filters.category_id.toString() }),
-      ...(filters?.supplier_name && { supplier_name: filters.supplier_name }),
-      ...(filters?.min_amount && { min_amount: filters.min_amount.toString() }),
-      ...(filters?.max_amount && { max_amount: filters.max_amount.toString() }),
-      ...(filters?.date_from && { date_from: filters.date_from }),
-      ...(filters?.date_to && { date_to: filters.date_to }),
-      ...(filters?.overdue_only && { overdue_only: filters.overdue_only.toString() }),
-      ...(filters?.search && { search: filters.search })
+      sort_order: sortOrder
     })
 
-    const response = await apiClient.get<PaginatedExpenseResponse>(`/expenses/?${searchParams}`)
+    // Add filters to params
+    if (filters.search) params.append('search', filters.search)
+    if (filters.expense_type) params.append('expense_type', filters.expense_type)
+    if (filters.payment_status) params.append('payment_status', filters.payment_status)
+    if (filters.payment_method) params.append('payment_method', filters.payment_method)
+    if (filters.category_id) params.append('category_id', filters.category_id)
+    if (filters.supplier_name) params.append('supplier_name', filters.supplier_name)
+    if (filters.min_amount !== undefined) params.append('min_amount', filters.min_amount.toString())
+    if (filters.max_amount !== undefined) params.append('max_amount', filters.max_amount.toString())
+    if (filters.date_from) params.append('date_from', filters.date_from)
+    if (filters.date_to) params.append('date_to', filters.date_to)
+
+    const response = await apiClient.get<PaginatedExpenseResponse>(`/expenses?${params}`)
     return response.data
   }
 
   /**
-   * Get a single expense by ID
+   * Get expense by ID
    */
-  async getExpenseById(id: UUID): Promise<Expense> {
+  async getExpenseById(id: string): Promise<Expense> {
     const response = await apiClient.get<Expense>(`/expenses/${id}`)
     return response.data
   }
 
   /**
-   * Create a new expense
+   * Create new expense
    */
-  async createExpense(data: CreateExpensePayload): Promise<Expense> {
-    const endpoint = data.expense_type === ExpenseType.INVOICE ? 'invoice' : 'simple'
+  async createExpense(expenseData: CreateExpensePayload): Promise<Expense> {
+    // Determine endpoint based on expense type
+    const endpoint = expenseData.expense_type === 'INVOICE' 
+      ? '/expenses/invoice' 
+      : '/expenses/simple'
     
-    // Prepare the request body based on expense type
-    const requestBody: Record<string, unknown> = {
-      description: data.description,
-      expense_date: data.expense_date + 'T00:00:00', // Convert to ISO datetime format
-      notes: data.notes,
-      receipt_url: data.receipt_url,
-      category_id: data.category_id,
-      total_amount: data.total_amount,
-      currency: data.currency || 'EUR',
-      tags: data.tags || [],
-    }
-
-    if (data.expense_type === ExpenseType.SIMPLE) {
-      // For simple expenses
-      requestBody.payment_method = data.payment_method
-      if (data.custom_fields?.contact_id) {
-        requestBody.contact_id = data.custom_fields.contact_id
-      }
-    } else {
-      // For invoice expenses
-      requestBody.contact_id = data.custom_fields?.contact_id
-      requestBody.base_amount = data.custom_fields?.base_amount || data.total_amount
-      requestBody.tax_amount = data.custom_fields?.tax_amount || 0
-      requestBody.invoice_number = data.custom_fields?.invoice_number
-      requestBody.payment_due_date = data.custom_fields?.payment_due_date ? 
-        data.custom_fields.payment_due_date + 'T00:00:00' : undefined
-      if (data.payment_method) {
-        requestBody.payment_method = data.payment_method
-      }
-    }
-
-    const response = await apiClient.post<Expense>(`/expenses/${endpoint}`, requestBody)
+    const response = await apiClient.post<Expense>(endpoint, expenseData)
     return response.data
   }
 
   /**
-   * Update an existing expense
+   * Update expense
    */
-  async updateExpense(id: UUID, data: UpdateExpensePayload): Promise<Expense> {
-    const response = await apiClient.put<Expense>(`/expenses/${id}`, data)
+  async updateExpense(id: string, updateData: UpdateExpensePayload): Promise<Expense> {
+    const response = await apiClient.put<Expense>(`/expenses/${id}`, updateData)
     return response.data
   }
 
   /**
-   * Delete an expense
+   * Delete expense
    */
-  async deleteExpense(id: UUID): Promise<void> {
-    await apiClient.delete<void>(`/expenses/${id}`)
+  async deleteExpense(id: string): Promise<void> {
+    await apiClient.delete(`/expenses/${id}`)
   }
 
   /**
-   * Mark an expense as paid
+   * Mark expense as paid
    */
-  async markExpensePaid(id: UUID, paymentDate?: string): Promise<Expense> {
-    const response = await apiClient.put<Expense>(`/expenses/${id}/mark-paid`, { payment_date: paymentDate })
+  async markExpenseAsPaid(id: string, paymentDate?: string): Promise<Expense> {
+    const params = paymentDate ? `?payment_date=${paymentDate}` : ''
+    const response = await apiClient.put<Expense>(`/expenses/${id}/mark-paid${params}`)
     return response.data
   }
 
@@ -123,7 +101,75 @@ export class ExpensesApi {
     const response = await apiClient.get<ExpenseStats>('/expenses/stats')
     return response.data
   }
+
+  /**
+   * Bulk delete expenses
+   */
+  async bulkDeleteExpenses(request: BulkDeleteRequest): Promise<BulkDeleteResponse> {
+    const response = await apiClient.post<BulkDeleteResponse>('/expenses/bulk-delete', request)
+    return response.data
+  }
+
+  /**
+   * Bulk update expenses
+   */
+  async bulkUpdateExpenses(request: BulkUpdateRequest): Promise<BulkUpdateResponse> {
+    const response = await apiClient.post<BulkUpdateResponse>('/expenses/bulk-update', request)
+    return response.data
+  }
+
+  /**
+   * Upload receipt/document for OCR processing
+   */
+  async uploadReceiptForOCR(file: File, expenseId?: string): Promise<{ analysisId: string }> {
+    const formData = new FormData()
+    formData.append('file', file)
+    if (expenseId) formData.append('expense_id', expenseId)
+
+    const response = await apiClient.post<{ analysisId: string }>('/expenses/analyze-document', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    })
+    return response.data
+  }
+
+  /**
+   * Get OCR analysis results
+   */
+  async getOCRAnalysis(analysisId: string): Promise<any> {
+    const response = await apiClient.get(`/expenses/document-analysis/${analysisId}`)
+    return response.data
+  }
+
+  /**
+   * Create expense from OCR analysis
+   */
+  async createExpenseFromOCR(
+    analysisId: string, 
+    userCorrections?: Record<string, any>
+  ): Promise<Expense> {
+    const response = await apiClient.post<Expense>('/expenses/create-from-analysis', {
+      analysis_id: analysisId,
+      user_corrections: userCorrections
+    })
+    return response.data
+  }
+
+  /**
+   * Search vendors and suppliers for contacts
+   */
+  async searchVendorsAndSuppliers(query: string, limit: number = 10): Promise<any[]> {
+    const params = new URLSearchParams({
+      search: query,
+      limit: limit.toString(),
+      contact_type: 'VENDOR,SUPPLIER'
+    })
+    
+    const response = await apiClient.get<any[]>(`/contacts/search?${params}`)
+    return response.data
+  }
 }
 
-// Export a singleton instance
-export const expensesApi = new ExpensesApi();
+// Export singleton instance
+export const expensesApi = new ExpensesApiClient()

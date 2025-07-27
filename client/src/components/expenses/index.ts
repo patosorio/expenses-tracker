@@ -1,7 +1,7 @@
 // Main components
 export { ExpensesTable } from './ExpensesTable'
 export { ExpensesToolbar } from './ExpensesToolbar'
-export { ExpensesPagination } from './expenses-pagination'
+export { ExpensesPagination } from './ExpensesPagination'
 export { AddExpenseDialog } from './AddExpenseDialog'
 export { ExpenseStatusBadge } from './ExpenseStatusBadge'
 

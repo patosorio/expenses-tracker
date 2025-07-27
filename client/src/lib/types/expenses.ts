@@ -19,7 +19,7 @@ export enum PaymentStatus {
 }
 
 export interface Expense {
-  id: UUID
+  id: string
   description: string
   expense_date: string
   expense_type: ExpenseType
@@ -34,11 +34,12 @@ export interface Expense {
   payment_status: PaymentStatus
   payment_method: PaymentMethod
   payment_date?: string
-  category_id: UUID
-  contact_id?: UUID
-  tax_config_id?: UUID
+  category_id: string
+  contact_id?: string
+  tax_config_id?: string
   tags?: string[]
   custom_fields?: Record<string, any>
+  user_id: string
   is_overdue: boolean
   days_overdue: number
   created_at: string
@@ -92,7 +93,7 @@ export interface ExpenseStats {
 
 export interface CreateExpensePayload {
   description: string
-  expense_date: string  // ISO date string
+  expense_date: string
   category_id: UUID
   payment_method: PaymentMethod
   total_amount: number
@@ -117,6 +118,10 @@ export interface UpdateExpensePayload {
   currency?: string
   tags?: string[]
   custom_fields?: Record<string, any>
+  invoice_number?: string
+  payment_due_date?: string
+  base_amount?: number
+  tax_amount?: number
 }
 
 export interface UseExpensesOptions {
@@ -139,4 +144,33 @@ export interface UseExpensesReturn {
   setPage: (page: number) => void
   setFilters: (filters: ExpenseFilters) => void
   setSort: (sortBy: string, sortOrder: 'asc' | 'desc') => void
+}
+
+// Bulk operation types
+export interface BulkDeleteRequest {
+  expense_ids: string[]
+  reason?: string
+}
+
+export interface BulkDeleteResponse {
+  deleted_count: number
+  failed_count: number
+  errors?: Array<{
+    expense_id: string
+    error: string
+  }>
+}
+
+export interface BulkUpdateRequest {
+  expense_ids: string[]
+  update_data: Partial<UpdateExpensePayload>
+}
+
+export interface BulkUpdateResponse {
+  updated_count: number
+  failed_count: number
+  errors?: Array<{
+    expense_id: string
+    error: string
+  }>
 }

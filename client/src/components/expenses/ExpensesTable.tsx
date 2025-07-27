@@ -11,9 +11,9 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Expense } from '@/lib/types/expenses'
-import { TableColumn } from '@/hooks/expenses/UseTableColumns'
+import { TableColumn } from '@/lib/hooks/expenses/UseTableColumns'
 import { ExpenseStatusBadge } from '@/components/expenses/ExpenseStatusBadge'
-import { getColumnDisplayValue } from '@/hooks/expenses/UseTableColumns'
+import { getColumnDisplayValue } from '@/lib/hooks/expenses/UseTableColumns'
 
 interface ExpensesTableProps {
   expenses: Expense[]

@@ -5,6 +5,7 @@ import "./globals.css"
 import { AuthProvider } from "@/lib/contexts/AuthContext"
 import { ApiProvider } from "@/lib/contexts/ApiContext"
 import { Toaster } from "@/components/ui/toaster"
+import { QueryProvider } from "@/lib/contexts/QueryProvider"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -23,7 +24,9 @@ export default function RootLayout({
       <body className={inter.className}>
         <AuthProvider>
           <ApiProvider>
+          <QueryProvider>  {/* Add this */}
             {children}
+          </QueryProvider>
           </ApiProvider>
         </AuthProvider>
         <Toaster />

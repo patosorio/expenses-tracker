@@ -73,5 +73,5 @@ htmlcov/
 .env.production
 
 # Others
-smartbudget360_action_plan.md
-smartbudget360_dev_plan.md
+_backend_fix/*
+_frontend_fix/*
