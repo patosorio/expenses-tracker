@@ -7,7 +7,6 @@ import {
   ContactSummaryResponse,
   ContactType
 } from "@/lib/types/contacts"
-import { UUID } from "crypto"
 import { apiClient } from "./client"
 
 export class ContactsApi {
@@ -47,22 +46,16 @@ export class ContactsApi {
     }
 
     try {
-      // Make two separate calls to get both VENDOR and SUPPLIER contacts
+      // Make two separate calls to get both VENDOR and SUPPLIER contacts using autocomplete endpoint
       const [vendorsResponse, suppliersResponse] = await Promise.all([
-        this.getContacts(1, limit, { 
-          search: searchTerm, 
-          contact_type: ContactType.VENDOR 
-        }),
-        this.getContacts(1, limit, { 
-          search: searchTerm, 
-          contact_type: ContactType.SUPPLIER 
-        })
+        apiClient.get<Contact[]>(`/contacts/search/autocomplete?q=${searchTerm}&limit=${limit}&contact_type=VENDOR`),
+        apiClient.get<Contact[]>(`/contacts/search/autocomplete?q=${searchTerm}&limit=${limit}&contact_type=SUPPLIER`)
       ])
 
       // Combine and sort results
       const allContacts = [
-        ...vendorsResponse.contacts,
-        ...suppliersResponse.contacts
+        ...vendorsResponse.data,
+        ...suppliersResponse.data
       ]
 
       // Sort by name and limit to requested number
@@ -78,7 +71,7 @@ export class ContactsApi {
   /**
    * Get a single contact by ID
    */
-  async getContactById(id: UUID): Promise<Contact> {
+  async getContactById(id: string): Promise<Contact> {
     const response = await apiClient.get<Contact>(`/contacts/${id}/`)
     return response.data
   }
@@ -110,7 +103,7 @@ export class ContactsApi {
   /**
    * Update an existing contact
    */
-  async updateContact(id: UUID, data: UpdateContactPayload): Promise<Contact> {
+  async updateContact(id: string, data: UpdateContactPayload): Promise<Contact> {
     const response = await apiClient.put<Contact>(`/contacts/${id}/`, data)
     return response.data
   }
@@ -118,7 +111,7 @@ export class ContactsApi {
   /**
    * Delete a contact
    */
-  async deleteContact(id: UUID): Promise<void> {
+  async deleteContact(id: string): Promise<void> {
     await apiClient.delete<void>(`/contacts/${id}/`)
   }
 

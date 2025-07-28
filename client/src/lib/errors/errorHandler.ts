@@ -183,6 +183,28 @@ export const errorHandlers = {
     })
   },
 
+  contacts: {
+    create: (error: unknown) => handleError(error, { 
+      action: 'creating contact',
+      fallbackMessage: 'Failed to create contact. Please check your data and try again.'
+    }),
+    
+    update: (error: unknown) => handleError(error, { 
+      action: 'updating contact',
+      fallbackMessage: 'Failed to update contact. Please try again.'
+    }),
+    
+    delete: (error: unknown) => handleError(error, { 
+      action: 'deleting contact',
+      fallbackMessage: 'Failed to delete contact. Please try again.'
+    }),
+    
+    fetch: (error: unknown) => handleError(error, { 
+      action: 'loading contacts',
+      fallbackMessage: 'Failed to load contacts. Please refresh the page.'
+    })
+  },
+
   auth: {
     login: (error: unknown) => handleError(error, {
       action: 'signing in',

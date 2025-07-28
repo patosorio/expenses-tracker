@@ -15,16 +15,15 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Plus } from "lucide-react"
 import { ContactType, CreateContactPayload } from "@/lib/types/contacts"
-import { useToast } from "@/components/ui/use-toast"
+import { useCreateContact } from "@/lib/hooks/contacts"
 
 interface AddContactDialogProps {
-  onAddContact: (contact: CreateContactPayload) => Promise<void>
+  onSuccess?: () => void
 }
 
-export function AddContactDialog({ onAddContact }: AddContactDialogProps) {
+export function AddContactDialog({ onSuccess }: AddContactDialogProps) {
   const [open, setOpen] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const { toast } = useToast()
+  const createContact = useCreateContact()
 
   // Form state
   const [formData, setFormData] = useState<CreateContactPayload>({
@@ -39,8 +38,6 @@ export function AddContactDialog({ onAddContact }: AddContactDialogProps) {
     website: "",
     notes: ""
   })
-
-
 
   const [errors, setErrors] = useState<Record<string, string>>({})
 
@@ -92,13 +89,8 @@ export function AddContactDialog({ onAddContact }: AddContactDialogProps) {
       return
     }
 
-    setLoading(true)
     try {
-      await onAddContact(formData)
-      toast({
-        title: "Success",
-        description: "Contact added successfully",
-      })
+      await createContact.mutateAsync(formData)
       
       // Reset form and close dialog
       setFormData({
@@ -115,16 +107,10 @@ export function AddContactDialog({ onAddContact }: AddContactDialogProps) {
       })
       setErrors({})
       setOpen(false)
+      onSuccess?.()
     } catch (error) {
+      // Error handling is done in the hook
       console.error('Failed to add contact:', error)
-      const errorMessage = error instanceof Error ? error.message : "Failed to add contact. Please try again."
-      toast({
-        title: "Error",
-        description: errorMessage,
-        variant: "destructive"
-      })
-    } finally {
-      setLoading(false)
     }
   }
 
@@ -290,12 +276,12 @@ export function AddContactDialog({ onAddContact }: AddContactDialogProps) {
               type="button" 
               variant="outline" 
               onClick={() => setOpen(false)}
-              disabled={loading}
+              disabled={createContact.isPending}
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={loading}>
-              {loading ? "Adding..." : "Add Contact"}
+            <Button type="submit" disabled={createContact.isPending}>
+              {createContact.isPending ? "Adding..." : "Add Contact"}
             </Button>
           </div>
         </form>

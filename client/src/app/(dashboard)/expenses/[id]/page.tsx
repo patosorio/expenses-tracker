@@ -1,33 +1,14 @@
 "use client"
 
-import { useState, useEffect } from "react"
 import { useParams } from "next/navigation"
-import { Expense } from "@/lib/types/expenses"
-import { expensesApi } from "@/lib/api/expenses"
-import { UUID } from "crypto"
+import { useExpenseDetails } from "@/lib/hooks/expenses"
 import { ExpenseDetailView } from "@/components/expenses"
 
 export default function ExpensePage() {
   const params = useParams()
-  const [expense, setExpense] = useState<Expense | null>(null)
-  const [loading, setLoading] = useState(true)
+  const { data: expense, isLoading, error } = useExpenseDetails(params.id as string)
 
-  useEffect(() => {
-    const fetchExpense = async () => {
-      try {
-        const data = await expensesApi.getExpenseById(params.id as UUID)
-        setExpense(data)
-      } catch (error) {
-        console.error('Failed to fetch expense:', error)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchExpense()
-  }, [params.id])
-
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="space-y-6">
         <div className="animate-pulse">
@@ -48,14 +29,16 @@ export default function ExpensePage() {
     )
   }
 
-  if (!expense) {
+  if (error || !expense) {
     return (
       <div className="space-y-6">
         <div className="text-center py-12">
           <div className="space-y-4">
-            <div className="text-lg font-light text-muted-foreground">Expense not found</div>
+            <div className="text-lg font-light text-muted-foreground">
+              {error ? 'Failed to load expense' : 'Expense not found'}
+            </div>
             <p className="text-sm text-muted-foreground">
-              The expense you're looking for doesn't exist or has been removed.
+              {error ? String(error) : "The expense you're looking for doesn't exist or has been removed."}
             </p>
           </div>
         </div>

@@ -91,19 +91,41 @@ export interface ExpenseStats {
   }>
 }
 
-export interface CreateExpensePayload {
+// Separate payload types for simple and invoice expenses
+export interface CreateSimpleExpensePayload {
   description: string
   expense_date: string
+  expense_type: ExpenseType.SIMPLE
+  notes?: string
+  receipt_url?: string
   category_id: UUID
   payment_method: PaymentMethod
   total_amount: number
-  notes?: string
-  receipt_url?: string
   currency?: string
   tags?: string[]
   custom_fields?: Record<string, any>
-  expense_type?: ExpenseType
 }
+
+export interface CreateInvoiceExpensePayload {
+  description: string
+  expense_date: string
+  expense_type: ExpenseType.INVOICE
+  notes?: string
+  receipt_url?: string
+  category_id: UUID
+  payment_method?: PaymentMethod
+  payment_due_date?: string
+  invoice_number?: string
+  contact_id: UUID
+  base_amount: number
+  tax_config_id?: UUID
+  currency?: string
+  tags?: string[]
+  custom_fields?: Record<string, any>
+}
+
+// Union type for backward compatibility
+export type CreateExpensePayload = CreateSimpleExpensePayload | CreateInvoiceExpensePayload
 
 export interface UpdateExpensePayload {
   description?: string
@@ -173,4 +195,77 @@ export interface BulkUpdateResponse {
     expense_id: string
     error: string
   }>
+}
+
+// ===== SPECIALIZED TYPES =====
+
+export interface InvoiceFilters {
+  payment_status?: PaymentStatus
+  supplier_name?: string
+  overdue_only?: boolean
+}
+
+export interface CategoryExpenseFilters {
+  dateFrom?: string
+  dateTo?: string
+}
+
+export interface ExportExpenseFilters {
+  dateFrom?: string
+  dateTo?: string
+  expenseType?: ExpenseType
+}
+
+export interface OverdueExpenseResponse {
+  id: string
+  description: string
+  contact_name: string
+  invoice_number?: string
+  total_amount: number
+  payment_due_date: string
+  days_overdue: number
+  currency: string
+}
+
+export interface OverdueExpensesListResponse {
+  overdue_invoices: OverdueExpenseResponse[]
+  total_overdue_amount: number
+  count: number
+  currency: string
+}
+
+export interface ExpenseAttachment {
+  id: string
+  expense_id: string
+  file_name: string
+  file_url: string
+  file_type: string
+  file_size: number
+  uploaded_at: string
+}
+
+export interface DocumentAnalysis {
+  id: string
+  expense_id?: string
+  user_id: string
+  original_filename: string
+  file_url?: string
+  file_type: string
+  analysis_status: string
+  extracted_data?: Record<string, any>
+  confidence_score?: number
+  needs_review: boolean
+  processing_started_at?: string
+  processing_completed_at?: string
+  error_message?: string
+  created_at: string
+  updated_at?: string
+}
+
+export interface QuickSearchResult {
+  id: string
+  description: string
+  total_amount: number
+  expense_date: string
+  expense_type: ExpenseType
 }

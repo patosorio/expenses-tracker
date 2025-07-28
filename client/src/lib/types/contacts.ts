@@ -85,4 +85,28 @@ export interface TableColumn {
   sortable?: boolean
   hidden?: boolean
   render?: (value: any, contact: Contact) => React.ReactNode
+}
+
+// ===== HOOK TYPES =====
+
+export interface UseContactsOptions {
+  page?: number
+  limit?: number
+  filters?: ContactFilters
+  sortBy?: string
+  sortOrder?: 'asc' | 'desc'
+  enabled?: boolean
+}
+
+export interface UseContactsReturn {
+  contacts: Contact[]
+  total: number
+  pages: number
+  currentPage: number
+  isLoading: boolean
+  error: string | null
+  refetch: () => Promise<void>
+  setPage: (page: number) => void
+  setFilters: (filters: ContactFilters) => void
+  setSort: (sortBy: string, sortOrder: 'asc' | 'desc') => void
 } 

@@ -11,15 +11,12 @@ import { AddExpenseDialog } from '@/components/expenses/AddExpenseDialog'
 import { useTableColumns } from '@/lib/hooks/expenses/UseTableColumns'
 import { 
   useExpenses, 
-  useCreateExpense, 
   useDeleteExpense, 
   useUpdateExpense 
 } from '@/lib/hooks/expenses'
 import { 
   Expense, 
-  ExpenseFilters, 
-  CreateExpensePayload,
-  UpdateExpensePayload 
+  ExpenseFilters
 } from '@/lib/types/expenses'
 
 export default function ExpensesPage() {
@@ -56,7 +53,6 @@ export default function ExpensesPage() {
     sortOrder: currentSort.order
   })
 
-  const createExpense = useCreateExpense()
   const deleteExpense = useDeleteExpense()
   const updateExpense = useUpdateExpense()
 
@@ -94,10 +90,6 @@ export default function ExpensesPage() {
   }, [setPage])
 
   // Business operations - simple calls to hooks
-  const handleAddExpense = useCallback(async (expenseData: CreateExpensePayload) => {
-    await createExpense.mutateAsync(expenseData)
-  }, [createExpense])
-
   const handleViewExpense = useCallback((expense: Expense) => {
     router.push(`/expenses/${expense.id}`)
   }, [router])
@@ -123,7 +115,7 @@ export default function ExpensesPage() {
             <h1 className="text-2xl font-light">Expenses</h1>
             <p className="text-muted-foreground text-sm">Manage your expenses</p>
           </div>
-          <AddExpenseDialog onAddExpense={handleAddExpense} />
+          <AddExpenseDialog onSuccess={refetch} />
         </div>
         <div className="text-center py-12">
           <div className="space-y-4">
@@ -145,7 +137,7 @@ export default function ExpensesPage() {
           <h1 className="text-2xl font-light">Expenses</h1>
           <p className="text-muted-foreground text-sm">Manage your expenses</p>
         </div>
-        <AddExpenseDialog onAddExpense={handleAddExpense} />
+        <AddExpenseDialog onSuccess={refetch} />
       </div>
 
       {/* Toolbar */}
