@@ -8,8 +8,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Contact, ContactType, UpdateContactPayload } from '@/lib/types/contacts'
-import { useToast } from '@/components/ui/use-toast'
-import { contactsApi } from '@/lib/api/contacts'
+import { useUpdateContact } from '@/lib/hooks/contacts'
 
 interface EditContactDialogProps {
   contact: Contact | null
@@ -24,8 +23,7 @@ export function EditContactDialog({
   onOpenChange, 
   onContactUpdated 
 }: EditContactDialogProps) {
-  const { toast } = useToast()
-  const [isLoading, setIsLoading] = useState(false)
+  const updateContact = useUpdateContact()
   const [formData, setFormData] = useState<UpdateContactPayload>({
     name: '',
     contact_type: ContactType.CLIENT,
@@ -73,25 +71,12 @@ export function EditContactDialog({
     if (!contact) return
 
     try {
-      setIsLoading(true)
-      await contactsApi.updateContact(contact.id, formData)
-      
-      toast({
-        title: "Contact Updated",
-        description: `${formData.name} has been updated successfully.`,
-      })
-      
+      await updateContact.mutateAsync({ id: contact.id, data: formData })
       onContactUpdated()
       onOpenChange(false)
     } catch (error) {
+      // Error handling is done in the hook
       console.error('Error updating contact:', error)
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to update contact. Please try again.",
-        variant: "destructive",
-      })
-    } finally {
-      setIsLoading(false)
     }
   }
 
@@ -302,12 +287,12 @@ export function EditContactDialog({
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
-              disabled={isLoading}
+              disabled={updateContact.isPending}
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={isLoading}>
-              {isLoading ? "Updating..." : "Update Contact"}
+            <Button type="submit" disabled={updateContact.isPending}>
+              {updateContact.isPending ? "Updating..." : "Update Contact"}
             </Button>
           </DialogFooter>
         </form>

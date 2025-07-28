@@ -204,7 +204,7 @@ export interface TimezoneOption {
 export interface LanguageOption {
   code: string
   name: string
-  nativeName: string
+  native_name: string
   flag: string
 }
 

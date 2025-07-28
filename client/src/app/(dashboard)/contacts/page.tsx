@@ -3,19 +3,16 @@
 import { useState, useCallback } from 'react'
 import { Users, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { useToast } from '@/components/ui/use-toast'
 import { ContactsToolbar } from '@/components/contacts/ContactsToolBar'
 import { ContactsTable } from '@/components/contacts/ContactsTable'
-import { ContactsPagination } from '@/components/contacts/contacts-pagination'
-import { useContacts } from '@/hooks/contacts/UseContacts'
-import { useTableColumns } from '@/hooks/contacts/UseTableColumns'
-import { Contact, ContactFilters, CreateContactPayload } from '@/lib/types/contacts'
-import { contactsApi } from '@/lib/api/contacts'
+import { ContactsPagination } from '@/components/contacts/ContactsPagination'
+import { useContacts, useCreateContact, useDeleteContact, useUpdateContact } from '@/lib/hooks/contacts'
+import { useTableColumns } from '@/lib/hooks/contacts/UseTableColumns'
+import { Contact, ContactFilters } from '@/lib/types/contacts'
 import { AddContactDialog } from '@/components/contacts/AddContactDialog'
 import { EditContactDialog } from '@/components/contacts/EditContactDialog'
 
 export default function ContactsPage() {
-  const { toast } = useToast()
   const [pageSize, setPageSize] = useState(25)
   const [currentSort, setCurrentSort] = useState({ field: 'created_at', order: 'desc' as 'asc' | 'desc' })
   const [filters, setFilters] = useState<ContactFilters>({})
@@ -25,7 +22,7 @@ export default function ContactsPage() {
   // Table columns management
   const { columns, visibleColumns, toggleColumn, resetColumns } = useTableColumns()
 
-  // Contacts data fetching
+  // Contacts data fetching with React Query
   const {
     contacts,
     total,
@@ -44,6 +41,11 @@ export default function ContactsPage() {
     sortBy: currentSort.field,
     sortOrder: currentSort.order
   })
+
+  // Mutation hooks
+  const createContact = useCreateContact()
+  const deleteContact = useDeleteContact()
+  const updateContact = useUpdateContact()
 
   // Check if any filters are active
   const hasActiveFilters = Boolean(
@@ -80,37 +82,18 @@ export default function ContactsPage() {
   }, [setPage])
 
   // Handle contact actions
-  const handleAddContact = useCallback(async (contactData: CreateContactPayload) => {
-    try {
-      await contactsApi.createContact(contactData)
-      toast({
-        title: "Contact Added",
-        description: `${contactData.name} has been added successfully.`,
-      })
-      refetch()
-    } catch {
-      toast({
-        title: "Error",
-        description: "Failed to add contact. Please try again.",
-        variant: "destructive",
-      })
-    }
-  }, [toast, refetch])
+  const handleAddContact = useCallback(async (contactData: any) => {
+    await createContact.mutateAsync(contactData)
+  }, [createContact])
 
   const handleAddContactClick = useCallback(() => {
-    toast({
-      title: "Add Contact",
-      description: "Please use the Add Contact button in the header to create a new contact.",
-    })
-  }, [toast])
+    // This is handled by the AddContactDialog component
+  }, [])
 
   const handleViewContact = useCallback((contact: Contact) => {
     // TODO: Implement view contact modal/page
-    toast({
-      title: "View Contact",
-      description: `Viewing contact: ${contact.name}`,
-    })
-  }, [toast])
+    console.log('View contact:', contact.name)
+  }, [])
 
   const handleEditContact = useCallback((contact: Contact) => {
     setEditContact(contact)
@@ -118,38 +101,20 @@ export default function ContactsPage() {
   }, [])
 
   const handleDeleteContact = useCallback(async (contact: Contact) => {
-    try {
-      console.log('Deleting contact:', contact.id, contact.name)
-      await contactsApi.deleteContact(contact.id)
-      console.log('Contact deleted successfully, refetching data...')
-      toast({
-        title: "Contact Deleted",
-        description: `${contact.name} has been deleted successfully.`,
-      })
-      // Force refetch to ensure UI is in sync with database
-      await refetch()
-      console.log('Data refetched after delete')
-    } catch (err) {
-      console.error('Error deleting contact:', err)
-      toast({
-        title: "Error",
-        description: "Failed to delete contact. Please try again.",
-        variant: "destructive",
-      })
-    }
-  }, [toast, refetch])
+    await deleteContact.mutateAsync(contact.id)
+  }, [deleteContact])
 
   // Show error state
-        if (error) {
+  if (error) {
     return (
-         <div className="space-y-6">
-             <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-light">Contacts</h1>
-          <p className="text-muted-foreground text-sm">Manage your clients, vendors, and suppliers</p>
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-2xl font-light">Contacts</h1>
+            <p className="text-muted-foreground text-sm">Manage your clients, vendors, and suppliers</p>
+          </div>
+          <AddContactDialog onSuccess={refetch} />
         </div>
-        <AddContactDialog onAddContact={handleAddContact} />
-      </div>
         <div className="text-center py-12">
           <div className="space-y-4">
             <div className="text-lg font-light text-muted-foreground">Failed to load contacts</div>
@@ -170,7 +135,7 @@ export default function ContactsPage() {
           <h1 className="text-2xl font-light">Contacts</h1>
           <p className="text-muted-foreground text-sm">Manage your clients, vendors, and suppliers</p>
         </div>
-        <AddContactDialog onAddContact={handleAddContact} />
+        <AddContactDialog onSuccess={refetch} />
       </div>
 
       {/* Toolbar */}

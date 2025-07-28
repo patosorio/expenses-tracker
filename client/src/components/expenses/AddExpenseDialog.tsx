@@ -15,12 +15,13 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { cn } from "@/lib/utils/utils"
 import { Textarea } from "@/components/ui/textarea"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
-import { CreateExpensePayload, ExpenseType, PaymentMethod } from "@/lib/types/expenses"
+import { CreateSimpleExpensePayload, CreateInvoiceExpensePayload, ExpenseType, PaymentMethod } from "@/lib/types/expenses"
 import { Category } from "@/lib/types/settings"
 import { Contact, ContactType } from "@/lib/types/contacts"
 import { UUID } from "crypto"
 import { useCategories } from "@/lib/hooks/settings/categories/useCategories"
-import { useContactSearch } from "@/lib/hooks/contacts/useContactSearch"
+import { useContactSearch } from "@/lib/hooks/contacts"
+import { useCreateSimpleExpense, useCreateInvoiceExpense } from "@/lib/hooks/expenses"
 import { errorHandlers } from "@/lib/errors/errorHandler"
 
 const paymentMethods = [
@@ -31,13 +32,12 @@ const paymentMethods = [
 ]
 
 interface AddExpenseDialogProps {
-  onAddExpense: (expense: CreateExpensePayload) => Promise<void>
+  onSuccess?: () => void
 }
 
-export function AddExpenseDialog({ onAddExpense }: AddExpenseDialogProps) {
+export function AddExpenseDialog({ onSuccess }: AddExpenseDialogProps) {
   const [open, setOpen] = useState(false)
   const [expenseType, setExpenseType] = useState<ExpenseType>(ExpenseType.SIMPLE)
-  const [isSubmitting, setIsSubmitting] = useState(false)
   
   // Form data
   const [description, setDescription] = useState("")
@@ -74,6 +74,10 @@ export function AddExpenseDialog({ onAddExpense }: AddExpenseDialogProps) {
     contactTypes: [ContactType.VENDOR, ContactType.SUPPLIER]
   })
 
+  // Create expense hooks
+  const createSimpleExpense = useCreateSimpleExpense()
+  const createInvoiceExpense = useCreateInvoiceExpense()
+
   // Search contacts when search value changes
   useEffect(() => {
     if (contactSearchValue.trim()) {
@@ -88,9 +92,6 @@ export function AddExpenseDialog({ onAddExpense }: AddExpenseDialogProps) {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    
-    // Prevent multiple submissions
-    if (isSubmitting) return
     
     // Client-side validation
     if (!description.trim()) {
@@ -122,40 +123,46 @@ export function AddExpenseDialog({ onAddExpense }: AddExpenseDialogProps) {
       return
     }
 
-    const expense: CreateExpensePayload = {
-      description: description.trim(),
-      expense_date: format(expenseDate, 'yyyy-MM-dd'),
-      category_id: selectedCategory as UUID,
-      payment_method: selectedPaymentMethod as PaymentMethod,
-      total_amount: amount,
-      notes: notes.trim() || undefined,
-      currency: 'EUR',
-      tags: tags.trim() ? tags.split(',').map(tag => tag.trim()).filter(Boolean) : undefined,
-      expense_type: expenseType,
-      custom_fields: {
-        // Contact for both types
-        ...(selectedContact && {
-          contact_id: selectedContact,
-        }),
-        // Invoice-specific fields
-        ...(expenseType === ExpenseType.INVOICE && {
-          invoice_number: invoiceNumber.trim(),
-          payment_due_date: dueDate ? format(dueDate, 'yyyy-MM-dd') : undefined,
-          base_amount: baseAmount,
-          tax_amount: taxAmount,
-        })
-      }
-    }
-
-    setIsSubmitting(true)
     try {
-      await onAddExpense(expense)
+      if (expenseType === ExpenseType.SIMPLE) {
+        const simplePayload: CreateSimpleExpensePayload = {
+          description: description.trim(),
+          expense_date: format(expenseDate, 'yyyy-MM-dd'),
+          expense_type: ExpenseType.SIMPLE,
+          category_id: selectedCategory as UUID,
+          payment_method: selectedPaymentMethod as PaymentMethod,
+          total_amount: amount,
+          notes: notes.trim() || undefined,
+          currency: 'EUR',
+          tags: tags.trim() ? tags.split(',').map(tag => tag.trim()).filter(Boolean) : undefined,
+          custom_fields: selectedContact ? { contact_id: selectedContact } : undefined
+        }
+        
+        await createSimpleExpense.mutateAsync(simplePayload)
+      } else {
+        const invoicePayload: CreateInvoiceExpensePayload = {
+          description: description.trim(),
+          expense_date: format(expenseDate, 'yyyy-MM-dd'),
+          expense_type: ExpenseType.INVOICE,
+          category_id: selectedCategory as UUID,
+          payment_method: selectedPaymentMethod as PaymentMethod,
+          payment_due_date: dueDate ? format(dueDate, 'yyyy-MM-dd') : undefined,
+          invoice_number: invoiceNumber.trim() || undefined,
+          contact_id: selectedContact as UUID,
+          base_amount: Number(baseAmount) || 0,
+          notes: notes.trim() || undefined,
+          currency: 'EUR',
+          tags: tags.trim() ? tags.split(',').map(tag => tag.trim()).filter(Boolean) : undefined
+        }
+        
+        await createInvoiceExpense.mutateAsync(invoicePayload)
+      }
+      
       setOpen(false)
       resetForm()
+      onSuccess?.()
     } catch (error) {
-      // Error handling is done in the hook
-    } finally {
-      setIsSubmitting(false)
+      // Error handling is done in the hooks
     }
   }
 
@@ -193,6 +200,8 @@ export function AddExpenseDialog({ onAddExpense }: AddExpenseDialogProps) {
     const contact = searchResults.find(c => c.id === selectedContact)
     return contact?.name || ""
   }
+
+  const isSubmitting = createSimpleExpense.isPending || createInvoiceExpense.isPending
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -468,9 +477,6 @@ export function AddExpenseDialog({ onAddExpense }: AddExpenseDialogProps) {
                 </div>
               </div>
 
-              {/* Remaining invoice fields follow similar pattern... */}
-              {/* For brevity, I'm showing the pattern - you can complete with remaining fields */}
-              
               {/* Description */}
               <div className="space-y-2">
                 <Label htmlFor="description">Description *</Label>

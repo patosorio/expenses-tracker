@@ -25,6 +25,12 @@ class InvalidUserDataError(ValidationError):
     error_code: str = "INVALID_USER_DATA"
 
 
+class InvalidEmailError(ValidationError):
+    """Invalid email format or structure provided."""
+    detail: str = "Invalid email format"
+    error_code: str = "INVALID_EMAIL_ERROR"
+
+
 class InvalidPasswordError(ValidationError):
     """Password doesn't meet security requirements."""
     detail: str = "Password doesn't meet security requirements"

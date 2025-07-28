@@ -5,7 +5,9 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from '@/components/ui/use-toast'
 import { expensesApi } from '@/lib/api/expenses'
 import { 
-  CreateExpensePayload, 
+  CreateSimpleExpensePayload,
+  CreateInvoiceExpensePayload,
+  CreateExpensePayload,
   UpdateExpensePayload,
   Expense,
   PaginatedExpenseResponse,
@@ -14,7 +16,12 @@ import {
   BulkDeleteRequest,
   BulkUpdateRequest,
   UseExpensesOptions,
-  UseExpensesReturn
+  UseExpensesReturn,
+  InvoiceFilters,
+  OverdueExpensesListResponse,
+  ExpenseAttachment,
+  DocumentAnalysis,
+  QuickSearchResult
 } from '@/lib/types/expenses'
 import { errorHandlers } from '@/lib/errors/errorHandler'
 import { useAuth } from '@/lib/contexts/AuthContext'
@@ -29,6 +36,16 @@ export const expenseKeys = {
   detail: (id: string) => [...expenseKeys.details(), id] as const,
   stats: () => [...expenseKeys.all, 'stats'] as const,
   ocr: (analysisId: string) => [...expenseKeys.all, 'ocr', analysisId] as const,
+  // New query keys for specialized hooks
+  byType: (type: string) => [...expenseKeys.all, 'byType', type] as const,
+  invoices: (filters: InvoiceFilters) => [...expenseKeys.all, 'invoices', filters] as const,
+  byCategory: (categoryId: string) => [...expenseKeys.all, 'byCategory', categoryId] as const,
+  recent: (limit: number) => [...expenseKeys.all, 'recent', limit] as const,
+  search: (query: string) => [...expenseKeys.all, 'search', query] as const,
+  overdue: () => [...expenseKeys.all, 'overdue'] as const,
+  export: (filters: any) => [...expenseKeys.all, 'export', filters] as const,
+  attachments: (expenseId: string) => [...expenseKeys.all, 'attachments', expenseId] as const,
+  documentAnalysis: (analysisId: string) => [...expenseKeys.all, 'documentAnalysis', analysisId] as const,
 }
 
 /**
@@ -116,7 +133,55 @@ export const useExpenses = (options: UseExpensesOptions = {}): UseExpensesReturn
 }
 
 /**
- * Hook for creating expenses
+ * Hook for creating simple (receipt) expenses
+ */
+export const useCreateSimpleExpense = () => {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (expenseData: CreateSimpleExpensePayload) => expensesApi.createSimpleExpense(expenseData),
+    onSuccess: (newExpense) => {
+      // Invalidate and refetch expenses list
+      queryClient.invalidateQueries({ queryKey: expenseKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: expenseKeys.stats() })
+      
+      toast({
+        title: 'Success',
+        description: 'Simple expense created successfully',
+      })
+    },
+    onError: (error) => {
+      errorHandlers.expenses.create(error)
+    }
+  })
+}
+
+/**
+ * Hook for creating invoice expenses
+ */
+export const useCreateInvoiceExpense = () => {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (expenseData: CreateInvoiceExpensePayload) => expensesApi.createInvoiceExpense(expenseData),
+    onSuccess: (newExpense) => {
+      // Invalidate and refetch expenses list
+      queryClient.invalidateQueries({ queryKey: expenseKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: expenseKeys.stats() })
+      
+      toast({
+        title: 'Success',
+        description: 'Invoice expense created successfully',
+      })
+    },
+    onError: (error) => {
+      errorHandlers.expenses.create(error)
+    }
+  })
+}
+
+/**
+ * Hook for creating expenses (legacy - determines type automatically)
  */
 export const useCreateExpense = () => {
   const queryClient = useQueryClient()
@@ -346,5 +411,210 @@ export const useExpenseDetails = (id: string) => {
     queryFn: () => expensesApi.getExpenseById(id),
     enabled: !!id,
     staleTime: 30000,
+  })
+}
+
+// ===== SPECIALIZED HOOKS =====
+
+/**
+ * Hook for fetching expenses by type (simple or invoice)
+ */
+export const useExpensesByType = (
+  expenseType: 'SIMPLE' | 'INVOICE',
+  options: { page?: number; limit?: number; enabled?: boolean } = {}
+) => {
+  const { page = 1, limit = 25, enabled = true } = options
+  const { user, isLoading: authLoading } = useAuth()
+
+  return useQuery({
+    queryKey: expenseKeys.byType(expenseType),
+    queryFn: () => expensesApi.getExpensesByType(expenseType, page, limit),
+    enabled: enabled && !authLoading && !!user,
+    staleTime: 30000,
+  })
+}
+
+/**
+ * Hook for fetching invoice expenses with filtering
+ */
+export const useInvoiceExpenses = (
+  filters: InvoiceFilters = {},
+  options: { page?: number; limit?: number; enabled?: boolean } = {}
+) => {
+  const { page = 1, limit = 25, enabled = true } = options
+  const { user, isLoading: authLoading } = useAuth()
+
+  return useQuery({
+    queryKey: expenseKeys.invoices(filters),
+    queryFn: () => expensesApi.getInvoiceExpenses(page, limit, filters),
+    enabled: enabled && !authLoading && !!user,
+    staleTime: 30000,
+  })
+}
+
+/**
+ * Hook for fetching expenses by category
+ */
+export const useExpensesByCategory = (
+  categoryId: string,
+  options: { 
+    page?: number; 
+    limit?: number; 
+    dateFrom?: string; 
+    dateTo?: string; 
+    enabled?: boolean 
+  } = {}
+) => {
+  const { page = 1, limit = 25, dateFrom, dateTo, enabled = true } = options
+  const { user, isLoading: authLoading } = useAuth()
+
+  return useQuery({
+    queryKey: expenseKeys.byCategory(categoryId),
+    queryFn: () => expensesApi.getExpensesByCategory(categoryId, page, limit, dateFrom, dateTo),
+    enabled: enabled && !authLoading && !!user && !!categoryId,
+    staleTime: 30000,
+  })
+}
+
+/**
+ * Hook for fetching recent expenses
+ */
+export const useRecentExpenses = (limit: number = 10) => {
+  const { user, isLoading: authLoading } = useAuth()
+
+  return useQuery({
+    queryKey: expenseKeys.recent(limit),
+    queryFn: () => expensesApi.getRecentExpenses(limit),
+    enabled: !authLoading && !!user,
+    staleTime: 30000,
+  })
+}
+
+/**
+ * Hook for quick expense search
+ */
+export const useQuickExpenseSearch = (query: string, limit: number = 10) => {
+  const { user, isLoading: authLoading } = useAuth()
+
+  return useQuery({
+    queryKey: expenseKeys.search(query),
+    queryFn: () => expensesApi.quickExpenseSearch(query, limit),
+    enabled: !authLoading && !!user && query.length >= 2,
+    staleTime: 30000,
+  })
+}
+
+/**
+ * Hook for fetching overdue expenses
+ */
+export const useOverdueExpenses = () => {
+  const { user, isLoading: authLoading } = useAuth()
+
+  return useQuery({
+    queryKey: expenseKeys.overdue(),
+    queryFn: () => expensesApi.getOverdueExpenses(),
+    enabled: !authLoading && !!user,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  })
+}
+
+/**
+ * Hook for exporting expenses summary
+ */
+export const useExportExpenses = () => {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (filters: {
+      dateFrom?: string
+      dateTo?: string
+      expenseType?: string
+    }) => expensesApi.exportExpensesSummary(filters),
+    onSuccess: (result) => {
+      toast({
+        title: 'Success',
+        description: 'Export completed successfully',
+      })
+    },
+    onError: (error) => {
+      errorHandlers.expenses.create(error)
+    }
+  })
+}
+
+/**
+ * Hook for fetching expense attachments
+ */
+export const useExpenseAttachments = (expenseId: string) => {
+  const { user, isLoading: authLoading } = useAuth()
+
+  return useQuery({
+    queryKey: expenseKeys.attachments(expenseId),
+    queryFn: () => expensesApi.getExpenseAttachments(expenseId),
+    enabled: !authLoading && !!user && !!expenseId,
+    staleTime: 30000,
+  })
+}
+
+/**
+ * Hook for uploading expense attachments
+ */
+export const useUploadAttachment = () => {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ expenseId, file }: { expenseId: string; file: File }) => 
+      expensesApi.uploadAttachment(expenseId, file),
+    onSuccess: (attachment) => {
+      queryClient.invalidateQueries({ queryKey: expenseKeys.attachments(attachment.expense_id) })
+      
+      toast({
+        title: 'Success',
+        description: 'Attachment uploaded successfully',
+      })
+    },
+    onError: (error) => {
+      errorHandlers.expenses.create(error)
+    }
+  })
+}
+
+/**
+ * Hook for fetching document analysis
+ */
+export const useDocumentAnalysis = (analysisId: string) => {
+  const { user, isLoading: authLoading } = useAuth()
+
+  return useQuery({
+    queryKey: expenseKeys.documentAnalysis(analysisId),
+    queryFn: () => expensesApi.getDocumentAnalysis(analysisId),
+    enabled: !authLoading && !!user && !!analysisId,
+    staleTime: 30000,
+  })
+}
+
+/**
+ * Hook for creating expense from document analysis
+ */
+export const useCreateFromAnalysis = () => {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ analysisId, userCorrections }: { 
+      analysisId: string; 
+      userCorrections?: Record<string, any> 
+    }) => expensesApi.createExpenseFromAnalysis(analysisId, userCorrections),
+    onSuccess: (newExpense) => {
+      queryClient.invalidateQueries({ queryKey: expenseKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: expenseKeys.stats() })
+      
+      toast({
+        title: 'Success',
+        description: 'Expense created from analysis successfully',
+      })
+    },
+    onError: (error) => {
+      errorHandlers.expenses.create(error)
+    }
   })
 }

@@ -6,11 +6,7 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
-    "generate-types": "node scripts/generate-types.js",
-    "generate-types:watch": "nodemon --watch ../backend/src --ext py --exec \"npm run generate-types\"",
-    "type-check": "tsc --noEmit",
-    "clean-types": "rm -rf src/lib/types/generated && mkdir -p src/lib/types/generated"
+    "lint": "next lint"
   },
   "dependencies": {
     "@firebase/auth-types": "^0.13.0",

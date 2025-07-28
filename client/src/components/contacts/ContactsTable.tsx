@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Contact, ContactType, TableColumn } from '@/lib/types/contacts'
 import { ContactTypeBadge } from '@/components/contacts/ContactTypeBadge'
-import { getColumnDisplayValue } from '@/hooks/contacts/UseTableColumns'
+import { getColumnDisplayValue } from '@/lib/hooks/contacts/UseTableColumns'
 
 interface ContactsTableProps {
   contacts: Contact[]
